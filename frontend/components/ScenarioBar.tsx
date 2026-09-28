@@ -22,47 +22,48 @@ export const ScenarioBar: React.FC<ScenarioBarProps> = ({
   const scenarios = [
     {
       id: 'healthy',
-      label: 'Scenario A: Healthy',
-      badge: 'TRUSTED',
+      label: t.demo.healthy,
+      badge: 'DEMO TRUST',
       badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
       icon: CheckCircle2
     },
     {
       id: 'heterogeneous',
-      label: 'Scenario B: Heterogeneous',
+      label: t.demo.heterogeneous,
       badge: 'RETEST',
       badgeBg: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
       icon: RefreshCw
     },
     {
       id: 'ood',
-      label: 'Scenario C: Out-of-Distribution',
+      label: t.demo.ood,
       badge: 'NOT TRUSTED',
       badgeBg: 'bg-rose-500/20 text-rose-300 border-rose-500/40',
       icon: AlertOctagon
     },
     {
       id: 'storage_warning',
-      label: 'Scenario D: Storage Spoilage',
+      label: t.demo.storage_warning,
       badge: 'STORAGE ALERT',
       badgeBg: 'bg-orange-500/20 text-orange-300 border-orange-500/40',
       icon: Flame
     },
     {
       id: 'adulteration',
-      label: 'Scenario E: Adulteration',
-      badge: 'SUSPECTED UREA',
+      label: t.demo.adulteration,
+      badge: 'SCREENING FLAG',
       badgeBg: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
       icon: ShieldAlert
     }
   ];
+  const selectedLabel = scenarios.find((item) => item.id === currentScenario)?.label;
 
   return (
-    <div className="bg-[#122b20] border-b border-[#2d6a4f] py-2 px-4 text-white shadow-inner">
+    <details className="bg-[#122b20] border-b border-[#2d6a4f] py-2 px-4 text-white shadow-inner">
+      <summary className="max-w-7xl mx-auto cursor-pointer list-none text-xs text-emerald-100 font-semibold flex items-center gap-2"><Sliders className="w-4 h-4 text-amber-400" />{t.scenariosLabel}<span className="opacity-75">· {selectedLabel}</span></summary>
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-        <div className="flex items-center space-x-2 text-xs text-[#74c69d]">
-          <Sliders className="w-4 h-4 text-amber-400" />
-          <span className="font-bold tracking-wide uppercase">{t.scenariosLabel}</span>
+        <div className="flex items-center space-x-2 text-xs text-[#74c69d] pt-2">
+          <span className="font-bold tracking-wide">{t.scenariosLabel}</span>
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
@@ -91,6 +92,6 @@ export const ScenarioBar: React.FC<ScenarioBarProps> = ({
           })}
         </div>
       </div>
-    </div>
+    </details>
   );
 };

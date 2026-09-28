@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { ShieldCheck, Cpu, ArrowRight, Activity, CheckCircle2, AlertTriangle, Database, Lock, Smartphone, Globe, Sparkles, Layers } from 'lucide-react';
+import { Cpu, ArrowRight, CheckCircle2, AlertTriangle, Sparkles } from 'lucide-react';
 import { dictionary, Language } from '../lib/dictionary';
 
 interface LandingPageProps {
@@ -28,10 +28,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ lang, onEnterApp }) =>
             </div>
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-tight mb-6">
-              Know Your Feed.<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#74c69d] via-[#d4a373] to-amber-300">
-                Trust Your Evidence.
-              </span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#74c69d] via-[#d4a373] to-amber-300">{t.heroTitle}</span>
             </h1>
 
             <p className="text-lg sm:text-xl text-emerald-100 font-normal leading-relaxed mb-8 max-w-xl">
@@ -58,7 +55,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ lang, onEnterApp }) =>
             {/* Simulated Hardware Disclaimer Badge */}
             <div className="mt-8 flex items-center space-x-2 text-xs text-amber-300 bg-amber-500/10 border border-amber-500/30 px-3.5 py-2 rounded-lg max-w-md">
               <Cpu className="w-4 h-4 shrink-0" />
-              <span>PROTOTYPE SIMULATION LAYER • Software-based hardware analyzer simulator replacing physical sensors.</span>
+              <span>{t.demo.intro}</span>
             </div>
           </div>
 
@@ -71,10 +68,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ lang, onEnterApp }) =>
               <div className="flex items-center justify-between pb-4 border-b border-[#2d6a4f]">
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></div>
-                  <span className="font-mono text-xs text-[#74c69d]">FEED ANALYZER SIMULATION</span>
+                  <span className="font-mono text-xs text-[#74c69d]">ILLUSTRATIVE DEMO PREVIEW</span>
                 </div>
                 <span className="text-xs px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold border border-emerald-500/40">
-                  TRUSTED • HIGH EVIDENCE
+                  SAMPLE VALUES · NOT MEASUREMENTS
                 </span>
               </div>
 
@@ -82,23 +79,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({ lang, onEnterApp }) =>
               <div className="grid grid-cols-2 gap-3 my-6">
                 <div className="bg-[#1b4332] p-3.5 rounded-xl border border-[#40916c]/30">
                   <div className="text-xs text-gray-400 font-medium">Crude Protein (CP)</div>
-                  <div className="text-2xl font-black text-[#74c69d]">15.8%</div>
-                  <div className="text-[10px] text-emerald-300">Optimal for Lactating Cows</div>
+                  <div className="text-2xl font-black text-[#74c69d]">—</div>
+                  <div className="text-[10px] text-emerald-300">Example value removed</div>
                 </div>
                 <div className="bg-[#1b4332] p-3.5 rounded-xl border border-[#40916c]/30">
                   <div className="text-xs text-gray-400 font-medium">Dry Matter (DM)</div>
-                  <div className="text-2xl font-black text-[#d4a373]">36.2%</div>
-                  <div className="text-[10px] text-amber-200">Maize Silage Quality</div>
+                  <div className="text-2xl font-black text-[#d4a373]">—</div>
+                  <div className="text-[10px] text-amber-200">Example value removed</div>
                 </div>
                 <div className="bg-[#1b4332] p-3.5 rounded-xl border border-[#40916c]/30">
                   <div className="text-xs text-gray-400 font-medium">Sample Consistency</div>
-                  <div className="text-2xl font-black text-emerald-400">94.8%</div>
-                  <div className="text-[10px] text-gray-300">5-Point Scan Variance: Low</div>
+                  <div className="text-2xl font-black text-emerald-400">—</div>
+                  <div className="text-[10px] text-gray-300">No sample has been scanned</div>
                 </div>
                 <div className="bg-[#1b4332] p-3.5 rounded-xl border border-[#40916c]/30">
                   <div className="text-xs text-gray-400 font-medium">Silage Storage pH</div>
-                  <div className="text-2xl font-black text-cyan-300">4.1</div>
-                  <div className="text-[10px] text-cyan-200">Stable Fermentation</div>
+                  <div className="text-2xl font-black text-cyan-300">—</div>
+                  <div className="text-[10px] text-cyan-200">No sensor is connected</div>
                 </div>
               </div>
 
@@ -106,7 +103,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ lang, onEnterApp }) =>
               <div className="bg-[#1b4332] p-3.5 rounded-xl border border-[#40916c]/40">
                 <div className="flex justify-between text-xs font-bold mb-1">
                   <span>Evidence Certainty Score</span>
-                  <span className="text-[#74c69d]">92.4% (HIGH)</span>
+                  <span className="text-[#74c69d]">Not calculated</span>
                 </div>
                 <div className="w-full h-2 rounded-full bg-[#122b20] overflow-hidden">
                   <div className="h-full bg-gradient-to-r from-emerald-500 to-[#74c69d]" style={{ width: '92.4%' }}></div>
@@ -179,18 +176,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ lang, onEnterApp }) =>
               </span>
             </h2>
             <p className="text-emerald-100 text-base leading-relaxed mb-6">
-              FeedSure 360 evaluates sample consistency, spectral calibration fit, out-of-distribution distance, visual screening, and uncertainty bands.
+              The current software demo illustrates evidence checks with generated spectra and scenario rules. It has no calibrated spectral model or image screening connected.
             </p>
             <p className="text-emerald-100 text-base leading-relaxed mb-8">
-              If evidence is insufficient, the system explicitly refuses to display a deceptive quantitative result and flags: <strong className="text-rose-300">RESULT NOT TRUSTED</strong> with clear explainable reasons.
+              In the demo, selected scenarios can withhold example nutrient values and show a <strong className="text-rose-300">RESULT NOT TRUSTED</strong> status. These are simulated rules, not a validated food safety measurement.
             </p>
 
             <div className="space-y-3">
               {[
-                "Multi-point scan variance detection (5 core sampling points)",
-                "Spectral calibration domain check (Mahalanobis Distance)",
-                "Computer Vision anomaly screening for foreign matter & mould",
-                "Rule-based safety recommendations & lab confirmation escalation"
+                "Generated 5-point spectra for UI and API demonstration",
+                "Scenario-based out-of-domain and evidence status examples",
+                "No camera-based mould or foreign matter model is connected",
+                "Demo guidance can recommend additional sampling or lab confirmation"
               ].map((item, idx) => (
                 <div key={idx} className="flex items-center space-x-3 text-sm font-semibold">
                   <CheckCircle2 className="w-5 h-5 text-[#74c69d] shrink-0" />
@@ -202,7 +199,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ lang, onEnterApp }) =>
 
           <div className="bg-[#122b20] p-6 rounded-2xl border border-[#2d6a4f] shadow-2xl">
             <div className="flex items-center justify-between pb-4 border-b border-[#2d6a4f] mb-4">
-              <span className="text-xs font-mono text-gray-400">OUT-OF-DISTRIBUTION FEED DEMO</span>
+              <span className="text-xs font-mono text-gray-400">ILLUSTRATIVE OUT-OF-DOMAIN SCENARIO</span>
               <span className="text-xs px-2.5 py-1 rounded bg-rose-500/20 text-rose-300 font-bold border border-rose-500/40">
                 RESULT NOT TRUSTED
               </span>
@@ -212,12 +209,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ lang, onEnterApp }) =>
               <div className="bg-rose-950/40 border border-rose-500/30 p-4 rounded-xl text-rose-200 text-xs leading-relaxed">
                 <div className="font-bold text-rose-300 mb-1 flex items-center space-x-1.5">
                   <AlertTriangle className="w-4 h-4 text-rose-400" />
-                  <span>Quantitative result refused by Evidence Engine:</span>
+                  <span>Example UI state · generated demo text:</span>
                 </div>
                 <ul className="list-disc pl-5 space-y-1 mt-2">
-                  <li>Sample spectrum lies outside validated calibration domain (Distance = 4.85).</li>
-                  <li>Prediction uncertainty band exceeds safe limits (&gt;80%).</li>
-                  <li>Multi-point sampling points show significant spectral mismatch.</li>
+                  <li>A selected scenario can mark a generated spectrum out of domain.</li>
+                  <li>No validated uncertainty estimate is calculated in this prototype.</li>
+                  <li>No physical feed sample is analyzed in this landing page preview.</li>
                 </ul>
               </div>
 
@@ -244,11 +241,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ lang, onEnterApp }) =>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {[
-            { step: '01', title: 'TEST', desc: '5-Point NIR scan & visual screening' },
-            { step: '02', title: 'STORE', desc: 'Silage trench allocation & pH baseline' },
-            { step: '03', title: 'MONITOR', desc: 'Real-time telemetry & heating risk' },
+            { step: '01', title: 'TEST', desc: 'Simulated 5-point spectrum and scenario rules' },
+            { step: '02', title: 'STORE', desc: 'Demo storage baseline; no trench sensor connected' },
+            { step: '03', title: 'MONITOR', desc: 'Simulated telemetry values; no live sensor' },
             { step: '04', title: 'RETEST', desc: 'Adaptive retest prior to ration transition' },
-            { step: '05', title: 'USE', desc: 'Approved for lactating dairy ration' }
+            { step: '05', title: 'USE', desc: 'Review batch evidence before any feeding decision' }
           ].map((st, idx) => (
             <div key={idx} className="bg-white p-6 rounded-xl border border-stone-200 shadow-sm relative">
               <span className="text-xs font-black text-[#2d6a4f] bg-emerald-50 px-2 py-1 rounded">

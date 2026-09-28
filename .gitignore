@@ -37,3 +37,9 @@ mobile/.pub-cache/
 *.swo
 .DS_Store
 Thumbs.db
+
+# Local demo database and temporary dependency environments
+backend/.data/
+backend/.packages/
+backend/vendor/
+backend/.venv/

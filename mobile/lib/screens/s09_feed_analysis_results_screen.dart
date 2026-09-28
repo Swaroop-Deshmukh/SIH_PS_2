@@ -2,303 +2,242 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../config/theme.dart';
-import 's10_contaminant_check_screen.dart';
-import 's12_ration_advisory_screen.dart';
-import 's17_report_download_screen.dart';
 
 class S09FeedAnalysisResultsScreen extends StatelessWidget {
   final Map<String, dynamic>? scanResult;
-
-  const S09FeedAnalysisResultsScreen({Key? key, this.scanResult}) : super(key: key);
-
+  const S09FeedAnalysisResultsScreen({Key? key, this.scanResult})
+    : super(key: key);
+  double _number(String key) => (scanResult?[key] as num?)?.toDouble() ?? 0;
   @override
   Widget build(BuildContext context) {
-    final double cp = scanResult?['crude_protein'] ?? 15.8;
-    final double dm = scanResult?['dry_matter'] ?? 36.2;
-    final double ndf = scanResult?['ndf'] ?? 42.0;
-    final double adf = scanResult?['adf'] ?? 28.5;
-    final String quality = scanResult?['quality_grade'] ?? 'Good Quality';
-
+    final result = scanResult;
+    final status = result?['trust_status']?.toString() ?? 'NO ANALYSIS RESULT';
+    final withheld = result?['withhold_values'] == true;
+    final color = status == 'TRUSTED'
+        ? Colors.green
+        : status == 'RETEST RECOMMENDED'
+        ? Colors.orange
+        : Colors.red;
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: Text(
           'Analysis Results',
-          style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white),
+          style: GoogleFonts.outfit(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
         backgroundColor: AppTheme.primaryColor,
-        elevation: 0,
         leading: IconButton(
           icon: const Icon(LucideIcons.arrowLeft, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Overall Quality Card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [AppTheme.primaryColor, AppTheme.secondaryColor],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primaryColor.withOpacity(0.3),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+      backgroundColor: AppTheme.backgroundColor,
+      body: result == null
+          ? const Center(
+              child: Text(
+                'No backend analysis was received. Start a feed test to continue.',
               ),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(18),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
-                      color: AppTheme.accentColor,
-                      borderRadius: BorderRadius.circular(20),
+                      color: color.withOpacity(0.08),
+                      border: Border.all(color: color.withOpacity(0.5)),
+                      borderRadius: BorderRadius.circular(18),
                     ),
-                    child: Text(
-                      quality.toUpperCase(),
-                      style: GoogleFonts.outfit(
-                        color: AppTheme.primaryColor,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 13,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        '88',
-                        style: GoogleFonts.outfit(
-                          fontSize: 54,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      Text(
-                        ' / 100',
-                        style: GoogleFonts.outfit(
-                          fontSize: 20,
-                          color: Colors.white70,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    'Overall Feed Integrity Score',
-                    style: GoogleFonts.outfit(color: Colors.white70, fontSize: 13),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-            Text(
-              'Key Nutritional Parameters',
-              style: GoogleFonts.outfit(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.primaryColor,
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Metrics Grid
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 1.45,
-              children: [
-                _buildMetricCard('Crude Protein (CP)', '$cp%', LucideIcons.flame, Colors.orange),
-                _buildMetricCard('Dry Matter (DM)', '$dm%', LucideIcons.droplets, Colors.blue),
-                _buildMetricCard('NDF Fiber', '$ndf%', LucideIcons.wheat, Colors.amber),
-                _buildMetricCard('ADF Fiber', '$adf%', LucideIcons.leaf, Colors.green),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-            // Urea & Adulteration quick badge
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.green.shade200),
-              ),
-              child: Row(
-                children: [
-                  const Icon(LucideIcons.checkCircle2, color: Colors.green, size: 24),
-                  const SizedBox(width: 12),
-                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Adulteration Test: PASSED',
-                          style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                            fontSize: 14,
+                          status,
+                          style: TextStyle(
+                            color: color,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 20,
                           ),
                         ),
+                        const SizedBox(height: 6),
+                        Text('Batch ' + (result['batch_id']?.toString() ?? '')),
+                        const SizedBox(height: 8),
                         Text(
-                          'No hazardous urea spiking detected (<0.2%)',
-                          style: GoogleFonts.outfit(color: Colors.grey.shade600, fontSize: 12),
+                          result['recommendation']?.toString() ?? '',
+                          style: const TextStyle(fontSize: 13),
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(height: 14),
+                  if (result['photo_attached'] == true)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        'Photo saved with this batch for human review. It was not analyzed by AI.',
+                        style: TextStyle(fontSize: 12, color: Colors.green),
+                      ),
+                    ),
+                  if (result['photo_error'] != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        'Analysis completed, but the photo could not be attached: ' +
+                            result['photo_error'].toString(),
+                        style: const TextStyle(fontSize: 12, color: Colors.red),
+                      ),
+                    ),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(13),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.amber.shade200),
+                    ),
+                    child: Text(
+                      'DEMO ONLY · ' +
+                          (result['data_badge']?.toString() ??
+                              'Simulated scenario data') +
+                          ' · no physical analyzer, trained nutrient model, or image model is connected.',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Nutritional screening values',
+                    style: GoogleFonts.outfit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryColor,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  if (withheld)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Text(
+                        'Quantitative values are withheld because this scenario is flagged. Obtain suitable additional evidence or laboratory confirmation before using this feed decision.',
+                        style: TextStyle(fontSize: 13, color: Colors.red),
+                      ),
+                    ),
+                  if (!withheld)
+                    GridView.count(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 10,
+                      crossAxisSpacing: 10,
+                      childAspectRatio: 1.5,
+                      children: [
+                        _metric(
+                          'Crude Protein · % DM',
+                          _number('crude_protein'),
+                        ),
+                        _metric('Dry Matter', _number('dry_matter')),
+                        _metric('NDF Fiber', _number('ndf')),
+                        _metric('ADF Fiber', _number('adf')),
+                      ],
+                    ),
+                  if (result['screening_summary'] != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: Text(
+                        'Scenario screening note: ' +
+                            result['screening_summary'].toString(),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  if (result['evidence_score'] != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Text(
+                        'Heuristic demo score: ' +
+                            result['evidence_score'].toString() +
+                            '/100 · not a probability or validated accuracy.',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ),
+                  if (result['advisories'] is List &&
+                      (result['advisories'] as List).isNotEmpty) ...[
+                    const SizedBox(height: 18),
+                    Text(
+                      'Backend advisories',
+                      style: GoogleFonts.outfit(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    for (final advisory in result['advisories'] as List)
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppTheme.borderLight),
+                        ),
+                        child: Text(
+                          advisory.toString(),
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      ),
+                  ],
+                  const SizedBox(height: 12),
+                  const Text(
+                    'This mobile prototype currently displays analysis and advisories returned by the API. Ration editing, passport history, and live storage telemetry are available in the web dashboard only.',
+                    style: TextStyle(fontSize: 11, color: Colors.black54),
+                  ),
                 ],
               ),
             ),
+    );
+  }
 
-            const SizedBox(height: 28),
-
-            // Navigation Actions
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const S10ContaminantCheckScreen()),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-                icon: const Icon(LucideIcons.shieldCheck, color: Colors.white),
-                label: Text(
-                  'Check Contaminant Details',
-                  style: GoogleFonts.outfit(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 10),
-
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const S12RationAdvisoryScreen()),
-                  );
-                },
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: AppTheme.primaryColor, width: 1.5),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-                icon: Icon(LucideIcons.calculator, color: AppTheme.primaryColor),
-                label: Text(
-                  'Generate Ration Advisory',
-                  style: GoogleFonts.outfit(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryColor,
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 10),
-
-            Center(
-              child: TextButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const S17ReportDownloadScreen()),
-                  );
-                },
-                icon: Icon(LucideIcons.fileText, color: Colors.grey.shade700, size: 18),
-                label: Text(
-                  'View & Export Passport PDF',
-                  style: GoogleFonts.outfit(
-                    color: Colors.grey.shade700,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ],
+  Widget _metric(String label, double value) => Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: AppTheme.borderLight),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
         ),
-      ),
-    );
-  }
-
-  Widget _buildMetricCard(String label, String value, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+        const SizedBox(height: 8),
+        Text(
+          value.toStringAsFixed(1) + '%',
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.primaryDark,
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: color, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  label,
-                  style: GoogleFonts.outfit(
-                    fontSize: 12,
-                    color: Colors.grey.shade700,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: GoogleFonts.outfit(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.primaryColor,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
 }

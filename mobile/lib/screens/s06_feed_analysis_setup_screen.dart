@@ -13,14 +13,13 @@ class S06FeedAnalysisSetupScreen extends StatefulWidget {
 }
 
 class _S06FeedAnalysisSetupScreenState extends State<S06FeedAnalysisSetupScreen> {
-  String _selectedFeed = 'Silage';
+  String _selectedFeed = 'Maize Silage';
 
   final List<Map<String, dynamic>> _feedTypes = [
     {'name': 'Green Fodder', 'icon': Icons.grass},
     {'name': 'Dry Fodder', 'icon': Icons.agriculture},
     {'name': 'Concentrate', 'icon': Icons.grain},
-    {'name': 'Silage', 'icon': Icons.inventory_2_outlined},
-    {'name': 'Other', 'icon': Icons.cloud_outlined},
+    {'name': 'Maize Silage', 'icon': Icons.inventory_2_outlined},
   ];
 
   @override

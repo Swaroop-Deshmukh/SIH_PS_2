@@ -1,143 +1,263 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
+"""FeedSure 360 local prototype API."""
+from datetime import datetime, timezone
+from uuid import uuid4
+from typing import Any
+from pathlib import Path
 
+from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+
+from database import DB_PATH, get_batch, get_batch_image, get_farm_context, initialize_database, list_batch_images, list_batches, save_batch, save_batch_image, save_farm_context
 from services.simulator import generate_nir_spectrum, generate_cv_screening, generate_storage_telemetry
 from services.evidence import evaluate_evidence
 from services.nutrition import predict_nutritional_parameters, evaluate_dairy_ration
 from services.advisory import generate_advisories
-from services.digital_twin import create_digital_twin
+from services.digital_twin import create_digital_twin, generate_integrity_hash
 
 app = FastAPI(
     title="FeedSure 360 Intelligence API",
-    description="Adaptive Evidence-Aware Feed & Silage Intelligence API for SIH 2026 Problem Statement 26111",
-    version="2026.1.0"
+    description="Evidence-aware feed and silage decision-support prototype. All current readings are simulated demo data.",
+    version="2026.2.0",
 )
-
-# Enable CORS for Next.js frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT"],
+    allow_headers=["Content-Type"],
 )
 
-class BatchAnalyzeRequest(BaseModel):
-    batch_id: Optional[str] = "FS-2026-0104"
-    feed_type: str = "Maize Silage"
-    scenario: str = "healthy" # healthy, heterogeneous, ood, storage_warning, adulteration
+SCENARIOS = {
+    "healthy": {"name": "Scenario A: Healthy Feed", "badge": "TRUSTED (SIMULATION)", "description": "Consistent five-point demo scan and stable simulated storage."},
+    "heterogeneous": {"name": "Scenario B: Heterogeneous Sample", "badge": "RETEST (SIMULATION)", "description": "Simulated variance between five sample points."},
+    "ood": {"name": "Scenario C: Out-of-Distribution", "badge": "RESULT NOT TRUSTED", "description": "Simulated spectrum outside the demo calibration domain."},
+    "storage_warning": {"name": "Scenario D: Storage Spoilage", "badge": "STORAGE ALERT (SIMULATION)", "description": "Simulated heating and elevated pH; inspect and confirm with suitable measurements."},
+    "adulteration": {"name": "Scenario E: Possible Adulteration", "badge": "SCREENING FLAG — CONFIRM", "description": "Simulated spectral/visual anomaly only; not chemical proof of urea or silica."},
+}
+FEED_TYPES = {"Maize Silage", "Green Fodder", "Dry Fodder", "Concentrate"}
+IMAGE_DIR = DB_PATH.parent / "batch_images"
+MAX_IMAGE_BYTES = 8 * 1024 * 1024
+IMAGE_TYPES = {"image/jpeg": ("jpg", b"\xff\xd8\xff"), "image/png": ("png", b"\x89PNG\r\n\x1a\n"), "image/webp": ("webp", b"RIFF")}
 
-class RationRequest(BaseModel):
-    lactating_animals: int = 17
-    dry_animals: int = 7
-    tested_feed_cp: float = 8.8
-    tested_feed_ndf: float = 46.2
-    feed_basket: Optional[List[Dict[str, Any]]] = None
+
+class BasketItem(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    quantity_kg: float = Field(ge=0, le=10000)
+    cp_pct: float = Field(ge=0, le=100)
+    dm_pct: float = Field(ge=0, le=100)
+    data_source: str = "DEMO REFERENCE"
+
+
+class FarmProfile(BaseModel):
+    farm_name: str = Field(default="My Farm", min_length=1, max_length=100)
+    location: str = Field(default="", max_length=120)
+    lactating_animals: int = Field(default=0, ge=0, le=100000)
+    dry_animals: int = Field(default=0, ge=0, le=100000)
+    daily_milk_yield_liters: float = Field(default=0, ge=0, le=1000000)
+    ration_group: str = "lactating"
+    data_source: str = "FARMER PROVIDED"
+
+
+class FarmContextRequest(BaseModel):
+    farm_profile: FarmProfile
+    feed_basket: list[BasketItem]
+
+
+class BatchAnalyzeRequest(BaseModel):
+    batch_id: str | None = Field(default=None, max_length=80)
+    feed_type: str = "Maize Silage"
+    scenario: str = "healthy"
+    farm_profile: FarmProfile | None = None
+    feed_basket: list[BasketItem] | None = None
+
+
+@app.on_event("startup")
+def startup() -> None:
+    initialize_database()
+
 
 @app.get("/api/health")
-def health_check():
+def health_check() -> dict[str, Any]:
+    from database import DB_PATH
     return {
         "status": "ONLINE",
         "system": "FeedSure 360 Intelligence Engine",
-        "hardware_mode": "SOFTWARE SIMULATOR LAYER (ZERO HARDWARE DEPENDENCY)",
-        "version": "2026.1.0"
+        "storage": "LOCAL SQLITE — OFFLINE PROTOTYPE",
+        "database_path": str(DB_PATH),
+        "data_mode": "SIMULATED DEMO DATA — NO TRAINED MODEL OR PHYSICAL DEVICE CONNECTED",
+        "version": "2026.2.0",
     }
 
+
 @app.get("/api/scenarios")
-def get_scenarios():
-    return [
-        {
-            "id": "healthy",
-            "name": "Scenario A: Healthy Feed",
-            "badge": "TRUSTED",
-            "description": "Consistent 5-point scan, optimal NIR fit, clear visual screening."
-        },
-        {
-            "id": "heterogeneous",
-            "name": "Scenario B: Heterogeneous Sample",
-            "badge": "RETEST",
-            "description": "High variance between 5 sampling points. Non-uniform core."
-        },
-        {
-            "id": "ood",
-            "name": "Scenario C: Out-of-Distribution",
-            "badge": "RESULT NOT TRUSTED",
-            "description": "Wavelength shift outside calibration domain. High prediction uncertainty."
-        },
-        {
-            "id": "storage_warning",
-            "name": "Scenario D: Storage Spoilage",
-            "badge": "STORAGE ALERT",
-            "description": "Temperature heating (>33°C), pH elevation, microbial exposure."
-        },
-        {
-            "id": "adulteration",
-            "name": "Scenario E: Suspected Adulteration",
-            "badge": "SUSPECTED ADULTERATION",
-            "description": "Absorption anomalies at urea/silica spectral bands."
-        }
-    ]
+def get_scenarios() -> list[dict[str, str]]:
+    return [{"id": key, **value} for key, value in SCENARIOS.items()]
+
+
+@app.get("/api/farm-context")
+def read_farm_context() -> dict[str, Any]:
+    return get_farm_context()
+
+
+@app.put("/api/farm-context")
+def update_farm_context(request: FarmContextRequest) -> dict[str, Any]:
+    if not request.feed_basket:
+        raise HTTPException(status_code=422, detail="Add at least one ingredient to the feed basket.")
+    if sum(item.quantity_kg for item in request.feed_basket) <= 0:
+        raise HTTPException(status_code=422, detail="Feed basket quantities must total more than zero.")
+    return save_farm_context(request.model_dump())
+
 
 @app.post("/api/analyze-batch")
-def analyze_batch(req: BatchAnalyzeRequest):
-    # 1. Run Simulator Layer
+def analyze_batch(req: BatchAnalyzeRequest) -> dict[str, Any]:
+    if req.feed_type not in FEED_TYPES:
+        raise HTTPException(status_code=422, detail=f"Unsupported feed type: {req.feed_type}")
+    if req.scenario not in SCENARIOS:
+        raise HTTPException(status_code=422, detail=f"Unsupported scenario: {req.scenario}")
+
+    context = get_farm_context()
+    profile = req.farm_profile.model_dump() if req.farm_profile else context["farm_profile"]
+    basket = [item.model_dump() for item in req.feed_basket] if req.feed_basket is not None else context["feed_basket"]
+    if not basket or sum(max(0, float(item.get("quantity_kg", 0))) for item in basket) <= 0:
+        raise HTTPException(status_code=422, detail="A feed basket with positive quantities is required.")
+
+    batch_id = req.batch_id or f"FS-{datetime.now().strftime('%Y%m%d')}-{uuid4().hex[:6].upper()}"
     nir_data = generate_nir_spectrum(req.feed_type, req.scenario)
     cv_data = generate_cv_screening(req.feed_type, req.scenario)
     storage_data = generate_storage_telemetry(req.scenario)
+    evidence = evaluate_evidence(nir_data, cv_data, req.scenario)
+    nutrition = predict_nutritional_parameters(req.feed_type, req.scenario)
 
-    # 2. Level 2 Evidence Engine
-    evidence_res = evaluate_evidence(nir_data, cv_data, req.scenario)
-
-    # 3. Level 1 Nutritional Prediction
-    nutrition_res = predict_nutritional_parameters(req.feed_type, req.scenario)
-
-    # 4. Level 3 Dairy Ration Evaluation
-    sample_dairy_profile = {"lactating_animals": 17, "dry_animals": 7}
-    sample_basket = [
-        {"name": "Maize Silage", "quantity_kg": 20, "cp_pct": nutrition_res["crude_protein_pct"]},
-        {"name": "Green Fodder", "quantity_kg": 10, "cp_pct": 11.2},
-        {"name": "Dry Straw", "quantity_kg": 4, "cp_pct": 4.2},
-        {"name": "Dairy Concentrate", "quantity_kg": 5, "cp_pct": 18.5}
-    ]
-    dairy_ration_res = evaluate_dairy_ration(nutrition_res, sample_dairy_profile, sample_basket)
-
-    # 5. Advisory Rule Engine
-    advisories = generate_advisories(evidence_res, dairy_ration_res, storage_data)
-
-    # 6. Feed Digital Twin & Passport
-    digital_twin = create_digital_twin(req.batch_id, req.feed_type, evidence_res, nutrition_res, storage_data, req.scenario)
-
-    return {
-        "batch_id": req.batch_id,
+    # Use the measured/simulated values for the tested feed in the actual saved ration basket.
+    ration_basket = [dict(item) for item in basket]
+    tested_item = next((item for item in ration_basket if item.get("name") == req.feed_type), None)
+    if tested_item:
+        tested_item["cp_pct"] = nutrition["crude_protein_pct"]
+        tested_item["dm_pct"] = nutrition["dry_matter_pct"]
+    else:
+        ration_basket.append({
+            "name": req.feed_type, "quantity_kg": 20,
+            "cp_pct": nutrition["crude_protein_pct"], "dm_pct": nutrition["dry_matter_pct"],
+            "data_source": "SIMULATED TEST RESULT — NOT A LABORATORY MEASUREMENT",
+        })
+    ration = evaluate_dairy_ration(nutrition, profile, ration_basket)
+    advisories = generate_advisories(evidence, ration, storage_data)
+    twin = create_digital_twin(batch_id, req.feed_type, evidence, nutrition, storage_data, req.scenario)
+    created_at = twin["created_at"]
+    result = {
+        "batch_id": batch_id,
         "feed_type": req.feed_type,
         "scenario": req.scenario,
         "nir_data": nir_data,
         "cv_screening": cv_data,
         "storage_telemetry": storage_data,
-        "evidence": evidence_res,
-        "nutritional_analysis": nutrition_res,
-        "dairy_ration": dairy_ration_res,
+        "evidence": evidence,
+        "nutritional_analysis": nutrition,
+        "dairy_ration": ration,
         "advisories": advisories,
-        "digital_twin": digital_twin
+        "digital_twin": twin,
+        "farm_profile": profile,
+        "feed_basket": ration_basket,
+        "data_provenance": {
+            "mode": "SIMULATED DEMO",
+            "measurement_source": "Software-generated scenario fixture; no physical analyzer, camera, or storage sensor is connected.",
+            "nutrition_source": "Fixed prototype reference profile; no trained or scientifically validated nutrient model is loaded.",
+            "vision_source": "Scenario rules; no image was captured or analyzed.",
+            "evidence_source": "Heuristic demonstration logic; evidence score is not a calibrated probability or accuracy claim.",
+            "storage_source": "Simulated scenario values; no live telemetry stream is connected.",
+            "record_created_at": created_at,
+        },
     }
+    save_batch(result)
+    return result
+
+
+@app.get("/api/batches")
+def read_batches(limit: int = 50) -> list[dict[str, Any]]:
+    return list_batches(max(1, min(limit, 200)))
+
+
+@app.get("/api/batches/{batch_id}")
+def read_batch(batch_id: str) -> dict[str, Any]:
+    result = get_batch(batch_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Batch not found.")
+    return result
+
+
+@app.post("/api/batches/{batch_id}/images")
+async def attach_batch_image(batch_id: str, image: UploadFile = File(...)) -> dict[str, Any]:
+    if get_batch(batch_id) is None:
+        raise HTTPException(status_code=404, detail="Batch not found. Run the feed demo first.")
+    content_type = (image.content_type or "").lower()
+    if content_type not in IMAGE_TYPES:
+        raise HTTPException(status_code=415, detail="Choose a JPEG, PNG, or WebP image.")
+    contents = await image.read(MAX_IMAGE_BYTES + 1)
+    if len(contents) > MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=413, detail="Images must be 8 MB or smaller.")
+    extension, signature = IMAGE_TYPES[content_type]
+    if not contents.startswith(signature) or (content_type == "image/webp" and contents[8:12] != b"WEBP"):
+        raise HTTPException(status_code=415, detail="The selected file does not match its image type.")
+
+    attachment_id = uuid4().hex
+    stored_name = f"{attachment_id}.{extension}"
+    IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+    (IMAGE_DIR / stored_name).write_bytes(contents)
+    safe_name = Path(image.filename or f"feed-photo.{extension}").name[:160]
+    record = save_batch_image({
+        "attachment_id": attachment_id,
+        "batch_id": batch_id,
+        "original_name": safe_name,
+        "stored_name": stored_name,
+        "content_type": content_type,
+        "size_bytes": len(contents),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return {**record, "image_analysis": "NOT PERFORMED — no image model is connected", "message": "Photo saved to this batch for human review. It was not analyzed for mould, toxins, or adulteration."}
+
+
+@app.get("/api/batches/{batch_id}/images")
+def read_batch_images(batch_id: str) -> list[dict[str, Any]]:
+    if get_batch(batch_id) is None:
+        raise HTTPException(status_code=404, detail="Batch not found.")
+    records = list_batch_images(batch_id)
+    return [{**record, "url": f"/api/batches/{batch_id}/images/{record['attachment_id']}"} for record in records]
+
+
+@app.get("/api/batches/{batch_id}/images/{attachment_id}")
+def read_batch_image(batch_id: str, attachment_id: str) -> FileResponse:
+    record = get_batch_image(attachment_id)
+    if record is None or record["batch_id"] != batch_id:
+        raise HTTPException(status_code=404, detail="Image attachment not found.")
+    path = IMAGE_DIR / record["stored_name"]
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Image file is missing from local storage.")
+    return FileResponse(path, media_type=record["content_type"], filename=record["original_name"], content_disposition_type="inline")
+
+
+@app.post("/api/batches/{batch_id}/verify-integrity")
+def verify_batch_integrity(batch_id: str) -> dict[str, Any]:
+    result = get_batch(batch_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Batch not found.")
+    twin = result["digital_twin"]
+    payload = {
+        "batch_id": twin["batch_id"], "feed_type": twin["feed_type"], "scenario": twin["scenario"],
+        "created_at": twin["created_at"], "evidence_score": twin["evidence"].get("evidence_score"),
+        "trust_status": twin["evidence"].get("trust_status"),
+        "dry_matter_pct": twin["nutrition"].get("dry_matter_pct"),
+        "crude_protein_pct": twin["nutrition"].get("crude_protein_pct"),
+        "storage_ph": twin["storage"].get("ph"),
+    }
+    actual = generate_integrity_hash(payload)
+    expected = twin.get("integrity_hash")
+    return {"batch_id": batch_id, "integrity_valid": actual == expected, "algorithm": "SHA-256", "scope": "Stored batch summary only; this is tamper-evidence, not a digital signature or blockchain certificate."}
+
 
 @app.get("/api/sample-farm")
-def get_sample_farm():
-    return {
-        "farm_name": "Shiv Dairy Farm",
-        "location": "Pune Region, Maharashtra",
-        "total_cattle": 24,
-        "lactating_cows": 17,
-        "dry_cows": 7,
-        "daily_milk_yield_liters": 260,
-        "feed_basket": [
-            {"ingredient": "Maize Silage", "quantity_kg": 20, "cp_pct": 8.8, "dm_pct": 34.5},
-            {"ingredient": "Green Napier Grass", "quantity_kg": 10, "cp_pct": 11.2, "dm_pct": 22.0},
-            {"ingredient": "Wheat Straw", "quantity_kg": 4, "cp_pct": 4.2, "dm_pct": 88.5},
-            {"ingredient": "Compound Feed Concentrate", "quantity_kg": 5, "cp_pct": 18.5, "dm_pct": 90.0},
-            {"ingredient": "Cottonseed Meal", "quantity_kg": 1.5, "cp_pct": 36.0, "dm_pct": 90.0},
-            {"ingredient": "Mineral Mixture", "quantity_kg": 0.2, "cp_pct": 0.0, "dm_pct": 98.0}
-        ]
-    }
+def get_sample_farm() -> dict[str, Any]:
+    """Compatibility endpoint for older clients."""
+    context = get_farm_context()
+    return {**context["farm_profile"], "feed_basket": context["feed_basket"]}

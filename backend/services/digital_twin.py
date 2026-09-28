@@ -36,38 +36,38 @@ def create_digital_twin(batch_id: str, feed_type: str, evidence: Dict[str, Any],
     timeline = [
         {
             "step": "TEST",
-            "title": "Representative Sampling & NIR Scan",
+            "title": "Simulated sampling example",
             "timestamp": created_time,
-            "status": "COMPLETED",
-            "detail": f"5-point NIR scan & CV visual screening completed. Evidence level: {evidence.get('evidence_level')}."
+            "status": "SIMULATED",
+            "detail": f"Generated 5-point example spectra. No physical scan or image screening was performed. Demo evidence level: {evidence.get('evidence_level')}."
         },
         {
             "step": "STORE",
-            "title": "Storage Allocation",
+            "title": "Example storage context",
             "timestamp": created_time,
-            "status": "COMPLETED",
-            "detail": f"Assigned to Storage Trench Silo 2. Initial pH: {storage.get('ph')}."
+            "status": "SIMULATED",
+            "detail": f"No silo allocation or pH measurement was recorded. Example pH value: {storage.get('ph')}."
         },
         {
             "step": "MONITOR",
             "title": "Telemetry & Spoilage Monitoring",
             "timestamp": created_time,
-            "status": "ACTIVE" if storage.get("status") == "STABLE" else "WARNING",
-            "detail": f"Simulated sensor telemetry active. Temp: {storage.get('temperature_celsius')}°C, Risk: {storage.get('spoilage_risk_index')}/100."
+            "status": "SIMULATED",
+            "detail": f"No live sensor is connected. Example temperature: {storage.get('temperature_celsius')}°C; demo indicator: {storage.get('spoilage_risk_index')}/100."
         },
         {
             "step": "RETEST",
             "title": "Scheduled Adaptive Retest",
-            "timestamp": "Pending (14 Days)",
-            "status": "SCHEDULED" if evidence.get("trust_status") == "TRUSTED" else "ACTION_REQUIRED",
-            "detail": "Retest recommended prior to ration transition."
+            "timestamp": "Not scheduled",
+            "status": "DEMO GUIDANCE",
+            "detail": "No retest has been scheduled. Use a validated test process when one is available."
         },
         {
             "step": "USE",
             "title": "Dairy Ration Feeding",
-            "timestamp": "Pending",
-            "status": "APPROVED" if evidence.get("trust_status") == "TRUSTED" else "HELD",
-            "detail": "Approved for Lactating Herd Feed Basket." if evidence.get("trust_status") == "TRUSTED" else "Batch held due to unverified evidence."
+            "timestamp": "Not recorded",
+            "status": "REVIEW REQUIRED",
+            "detail": "This prototype never approves feed for use. A qualified person must review validated test results."
         }
     ]
 
@@ -85,8 +85,8 @@ def create_digital_twin(batch_id: str, feed_type: str, evidence: Dict[str, Any],
             "title": "FEEDSURE QUALITY PASSPORT",
             "passport_id": f"PASSPORT-{batch_id}",
             "issued_at": created_time,
-            "model_version": "FeedSure-v2026.1-CALIB_V4",
-            "verification_status": "INTEGRITY VERIFIED",
-            "verification_badge": "SHA-256 SECURED"
+            "model_version": "Simulated rules V0.1 — no trained nutrient model",
+            "verification_status": "HASH GENERATED - VERIFY WHEN NEEDED",
+            "verification_badge": "SHA-256 DIGEST"
         }
     }

@@ -1,144 +1,39 @@
 "use client";
-
-import React, { useState } from 'react';
-import { Milk, Lightbulb } from 'lucide-react';
-import { dictionary, Language } from '../lib/dictionary';
-import { BatchAnalyzeResponse } from '../lib/api';
-
-interface DairyRationAssessorProps {
-  lang: Language;
-  data: BatchAnalyzeResponse;
-  farmerMode: boolean;
-}
-
-export const DairyRationAssessor: React.FC<DairyRationAssessorProps> = ({ data }) => {
-  const { nutritional_analysis } = data;
-
-  // Editable Dairy Profile & Feed Basket State
-  const [lactatingCount, setLactatingCount] = useState(17);
-  const [dryCount, setDryCount] = useState(7);
-
-  const [basketItems, setBasketItems] = useState([
-    { id: 1, name: "Maize Silage (Tested Batch)", quantityKg: 20, cpPct: nutritional_analysis.crude_protein_pct, dmPct: nutritional_analysis.dry_matter_pct },
-    { id: 2, name: "Green Napier Grass", quantityKg: 10, cpPct: 11.2, dmPct: 22.0 },
-    { id: 3, name: "Wheat Straw", quantityKg: 4, cpPct: 4.2, dmPct: 88.5 },
-    { id: 4, name: "Compound Feed Concentrate", quantityKg: 5, cpPct: 18.5, dmPct: 90.0 }
-  ]);
-
-  // Recalculate Weighted CP
-  const totalKg = basketItems.reduce((acc, item) => acc + item.quantityKg, 0) || 1;
-  const weightedCp = basketItems.reduce((acc, item) => acc + (item.quantityKg * item.cpPct), 0) / totalKg;
-  const targetCp = 13.5;
-  const cpGap = Number((targetCp - weightedCp).toFixed(1));
-
-  return (
-    <div className="space-y-6">
-      
-      {/* Header Banner */}
-      <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-2 text-xs font-bold text-[#2d6a4f] uppercase tracking-wider mb-1">
-            <Milk className="w-4 h-4 text-[#52b788]" />
-            <span>LEVEL 3 INTELLIGENCE • DAIRY FEEDING DECISION-SUPPORT</span>
-          </div>
-          <h2 className="text-2xl font-black text-[#1a1e1b]">Dairy Nutrition Profile & Ration Assessment</h2>
-          <p className="text-xs text-stone-500 mt-1">
-            Integrates actual measured feed quality into daily total mixed ration (TMR) balance.
-          </p>
-        </div>
-
-        <div className="bg-[#1b4332] text-white px-4 py-3 rounded-xl border border-[#2d6a4f] text-right">
-          <div className="text-[11px] text-[#74c69d] font-bold">RATION PROTEIN CONTRIBUTION</div>
-          <div className="text-xl font-black">{weightedCp.toFixed(1)}% <span className="text-xs text-stone-300">vs {targetCp}% Target</span></div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Left Col: Dairy Herd Profile */}
-        <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-4">
-          <h3 className="text-base font-bold text-[#1a1e1b] pb-3 border-b border-stone-100 flex items-center justify-between">
-            <span>Dairy Herd Context</span>
-            <span className="text-xs font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">Shiv Dairy Farm</span>
-          </h3>
-
-          <div className="space-y-3">
-            <div className="p-3 bg-stone-50 rounded-xl border border-stone-200">
-              <label className="text-xs text-stone-500 font-semibold block mb-1">Lactating Cows (High Yielding):</label>
-              <input
-                type="number"
-                value={lactatingCount}
-                onChange={(e) => setLactatingCount(Number(e.target.value))}
-                className="w-full bg-white border border-stone-300 rounded-lg p-2 text-sm font-bold text-[#1b4332]"
-              />
-            </div>
-
-            <div className="p-3 bg-stone-50 rounded-xl border border-stone-200">
-              <label className="text-xs text-stone-500 font-semibold block mb-1">Dry Cows / Young Stock:</label>
-              <input
-                type="number"
-                value={dryCount}
-                onChange={(e) => setDryCount(Number(e.target.value))}
-                className="w-full bg-white border border-stone-300 rounded-lg p-2 text-sm font-bold text-[#1b4332]"
-              />
-            </div>
-          </div>
-
-          <div className="pt-2 text-xs text-stone-500">
-            <span className="font-bold text-stone-700">Total Herd Size:</span> {lactatingCount + dryCount} Animals
-          </div>
-        </div>
-
-        {/* Right 2 Cols: Feed Basket Manager */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-            <h3 className="text-base font-bold text-[#1a1e1b]">Daily Feed Basket Formulation</h3>
-            <span className="text-xs text-stone-500">Total Intake: {totalKg} kg / cow / day</span>
-          </div>
-
-          <div className="divide-y divide-stone-100">
-            {basketItems.map((item) => (
-              <div key={item.id} className="py-3 flex items-center justify-between gap-4 text-xs">
-                <div className="font-bold text-stone-900 w-1/3">{item.name}</div>
-                
-                <div className="flex items-center space-x-2">
-                  <span className="text-stone-500 font-medium">Quantity:</span>
-                  <input
-                    type="number"
-                    value={item.quantityKg}
-                    onChange={(e) => {
-                      const newQty = Number(e.target.value);
-                      setBasketItems(basketItems.map(i => i.id === item.id ? { ...i, quantityKg: newQty } : i));
-                    }}
-                    className="w-16 p-1 bg-stone-50 border border-stone-300 rounded text-center font-bold text-[#1b4332]"
-                  />
-                  <span className="text-stone-500 font-medium">kg</span>
-                </div>
-
-                <div className="text-stone-600 font-medium">
-                  CP: <span className="font-bold text-[#2d6a4f]">{item.cpPct}%</span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Nutritional Gap Advisory Banner */}
-          <div className={`p-4 rounded-xl border ${cpGap > 0 ? 'bg-amber-500/10 border-amber-500/30 text-amber-900' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900'}`}>
-            <div className="font-bold text-xs flex items-center space-x-2">
-              <Lightbulb className="w-4 h-4 text-amber-600" />
-              <span>Dairy Nutrition Guidance:</span>
-            </div>
-            <p className="text-xs mt-1 font-medium leading-relaxed">
-              {cpGap > 0
-                ? `Current ration has a crude protein deficit of ${cpGap}%. Consider increasing Groundnut / Cottonseed Oil Cake by 1.2 kg per lactating cow to balance milk yield.`
-                : `Daily ration crude protein contribution is optimal (${weightedCp.toFixed(1)}%) for your lactating herd.`}
-            </p>
-          </div>
-
-        </div>
-
-      </div>
-
+import React, { useEffect, useMemo, useState } from "react";
+import { Check, Lightbulb, LoaderCircle, Milk, Save } from "lucide-react";
+import { Language } from "../lib/dictionary";
+import { BatchAnalyzeResponse, FarmContext } from "../lib/api";
+interface Props { lang: Language; data: BatchAnalyzeResponse; farmerMode: boolean; context: FarmContext; onSaveContext: (context: FarmContext) => Promise<boolean>; saving: boolean; }
+export const DairyRationAssessor: React.FC<Props> = ({ lang, data, context, onSaveContext, saving }) => {
+  const [draft, setDraft] = useState<FarmContext>(context);
+  const [saved, setSaved] = useState(false);
+  useEffect(() => { setDraft(context); }, [context]);
+  const ration = data.dairy_ration.ration_analysis;
+  const mr = lang === "mr";
+  const copy = mr ? { title: "शेत आणि पशुखाद्य माहिती", subtitle: "जतन केलेली माहिती पुढील डेमो गणनेत वापरली जाईल.", save: "माहिती जतन करा व पुन्हा मोजा", saved: "जतन झाले", farm: "शेताची माहिती", example: "ही उदाहरणातील माहिती आहे. शेतकऱ्याची खरी माहिती भरा.", name: "शेताचे नाव", location: "गाव / ठिकाण", lactating: "दुभती जनावरे", dry: "भाकड जनावरे", milk: "दररोजचे दूध (लिटर)", group: "कोणत्या जनावरांसाठी आहार मोजायचा?", feed: "उपलब्ध चारा", reference: "खालील पोषण आकडे डेमो उदाहरणे आहेत.", ingredient: "चारा प्रकार", quantity: "प्रमाण किलो", cp: "प्रथिने % (कोरड्या पदार्थात)", dm: "कोरडा पदार्थ %", calc: "उदाहरणातील आहार गणना", caution: "ही वैद्यकीय किंवा प्रमाणित आहार सूचना नाही. चाऱ्याचे प्रमाण बदलण्यापूर्वी पशुखाद्य तज्ज्ञांचा सल्ला घ्या." } : { title: "Farm profile and feed basket", subtitle: "Saved details are used by the next demo calculation.", save: "Save details and recalculate", saved: "Saved", farm: "Farm details", example: "These are example details. Enter the farmer's actual information.", name: "Farm name", location: "Village / location", lactating: "Lactating animals", dry: "Dry animals", milk: "Daily milk (litres)", group: "Which animals is this feed plan for?", feed: "Available feed", reference: "Nutrition figures below are demo examples.", ingredient: "Feed type", quantity: "Quantity kg", cp: "Protein % (dry matter)", dm: "Dry matter %", calc: "Example feed calculation", caution: "This is not a validated feed prescription. Ask a dairy nutritionist before changing feed quantities." };
+  const totalAsFed = useMemo(() => draft.feed_basket.reduce((sum, item) => sum + Number(item.quantity_kg || 0), 0), [draft]);
+  const updateProfile = (key: keyof FarmContext["farm_profile"], value: string | number) => { setDraft((current) => ({ ...current, farm_profile: { ...current.farm_profile, [key]: value } })); setSaved(false); };
+  const updateItem = (index: number, key: "quantity_kg" | "cp_pct" | "dm_pct", value: number) => { setDraft((current) => ({ ...current, feed_basket: current.feed_basket.map((item, i) => i === index ? { ...item, [key]: value } : item) })); setSaved(false); };
+  const submit = async (event: React.FormEvent) => { event.preventDefault(); setSaved(await onSaveContext(draft)); };
+  return <form onSubmit={submit} className="space-y-6">
+    <div className="bg-white p-5 sm:p-6 rounded-2xl border border-stone-200 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div><div className="flex items-center gap-2 text-xs font-bold text-[#2d6a4f] uppercase tracking-wider mb-1"><Milk className="w-4 h-4"/>{mr ? "पशुखाद्य नियोजन" : "Dairy nutrition decision support"}</div><h2 className="text-xl sm:text-2xl font-black">{copy.title}</h2><p className="text-xs text-stone-600 mt-1">{copy.subtitle}</p></div>
+      <button disabled={saving || !draft.feed_basket.length} className="inline-flex items-center gap-2 rounded-xl bg-[#1b4332] text-white px-4 py-3 font-bold text-sm disabled:opacity-60">{saving ? <LoaderCircle className="w-4 h-4 animate-spin"/> : saved ? <Check className="w-4 h-4"/> : <Save className="w-4 h-4"/>}{saved ? copy.saved : copy.save}</button>
     </div>
-  );
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <section className="bg-white p-5 rounded-2xl border border-stone-200 space-y-4"><div><h3 className="font-bold">{copy.farm}</h3><p className="text-[11px] text-amber-800 mt-1">{copy.example}</p></div>
+        <label className="block text-xs font-semibold text-stone-600">{copy.name}<input value={draft.farm_profile.farm_name} onChange={(e) => updateProfile("farm_name", e.target.value)} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm text-stone-900"/></label>
+        <label className="block text-xs font-semibold text-stone-600">{copy.location}<input value={draft.farm_profile.location} onChange={(e) => updateProfile("location", e.target.value)} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm text-stone-900"/></label>
+        <div className="grid grid-cols-2 gap-3"><label className="text-xs font-semibold text-stone-600">{copy.lactating}<input type="number" min="0" value={draft.farm_profile.lactating_animals} onChange={(e) => updateProfile("lactating_animals", Number(e.target.value))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm text-stone-900"/></label><label className="text-xs font-semibold text-stone-600">{copy.dry}<input type="number" min="0" value={draft.farm_profile.dry_animals} onChange={(e) => updateProfile("dry_animals", Number(e.target.value))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm text-stone-900"/></label></div>
+        <label className="block text-xs font-semibold text-stone-600">{copy.milk}<input type="number" min="0" value={draft.farm_profile.daily_milk_yield_liters} onChange={(e) => updateProfile("daily_milk_yield_liters", Number(e.target.value))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm text-stone-900"/></label>
+        <label className="block text-xs font-semibold text-stone-600">{copy.group}<select value={draft.farm_profile.ration_group} onChange={(e) => updateProfile("ration_group", e.target.value as "lactating" | "dry")} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm text-stone-900"><option value="lactating">{copy.lactating}</option><option value="dry">{copy.dry}</option></select></label>
+        <p className="text-[11px] text-stone-500">Total herd: {Number(draft.farm_profile.lactating_animals) + Number(draft.farm_profile.dry_animals)}</p>
+      </section>
+      <section className="lg:col-span-2 bg-white p-5 rounded-2xl border border-stone-200 space-y-4"><div className="flex flex-wrap items-end justify-between gap-2"><div><h3 className="font-bold">{copy.feed}</h3><p className="text-[11px] text-stone-600 mt-1">{copy.reference}</p></div><span className="text-xs text-stone-600">{mr ? "एकूण रोजचा चारा:" : "As-fed total:"} {totalAsFed.toFixed(1)} kg/day</span></div>
+        <div className="overflow-x-auto"><table className="w-full min-w-[650px] text-left text-xs"><thead><tr className="border-b text-stone-500"><th className="py-2">{copy.ingredient}</th><th className="py-2">{copy.quantity}</th><th className="py-2">{copy.cp}</th><th className="py-2">{copy.dm}</th></tr></thead><tbody>{draft.feed_basket.map((item, index) => <tr key={item.name} className="border-b border-stone-100"><td className="py-3 pr-3 font-semibold text-stone-800">{item.name}<div className="text-[10px] text-amber-800 font-normal">{item.data_source}</div></td>{(["quantity_kg", "cp_pct", "dm_pct"] as const).map((key) => <td key={key} className="py-2 pr-2"><input aria-label={item.name + " " + key} type="number" min="0" max="100" step="0.1" value={item[key]} onChange={(e) => updateItem(index, key, Number(e.target.value))} className="w-24 rounded-lg border border-stone-300 px-2 py-2"/></td>)}</tr>)}</tbody></table></div>
+        <div className={"p-4 rounded-xl border " + (ration.cp_status === "DEFICIENT" ? "bg-amber-50 border-amber-200" : "bg-emerald-50 border-emerald-200")}><div className="flex items-center gap-2 text-sm font-bold"><Lightbulb className="w-4 h-4"/>{copy.calc} · {ration.ration_group === "dry" ? copy.dry : copy.lactating}</div><p className="text-xs mt-1">{mr ? "या चाऱ्यातील प्रथिने (कोरड्या पदार्थात):" : "Basket protein (dry matter):"} {ration.basket_weighted_cp_pct}% · {mr ? "उदाहरण तुलना:" : "Example comparison:"} {ration.target_cp_pct}% · {mr ? "फरक:" : "Difference:"} {ration.cp_gap_pct}.</p><p className="text-[11px] mt-2 text-stone-700">{copy.caution}</p></div>
+        <p className="text-[10px] text-stone-500">Analysis result: {data.batch_id} · {data.nutritional_analysis.data_badge}</p>
+      </section>
+    </div>
+  </form>;
 };

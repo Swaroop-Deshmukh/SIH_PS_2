@@ -1,121 +1,149 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import '../config/theme.dart';
+import '../services/api_service.dart';
 import 's09_feed_analysis_results_screen.dart';
 
 class S08AnalysisProgressScreen extends StatefulWidget {
-  final VoidCallback? onAnalysisComplete;
-
-  const S08AnalysisProgressScreen({super.key, this.onAnalysisComplete});
-
+  final String feedType;
+  final String scenario;
+  final String? imagePath;
+  const S08AnalysisProgressScreen({
+    super.key,
+    this.feedType = 'Maize Silage',
+    this.scenario = 'healthy',
+    this.imagePath,
+  });
   @override
-  State<S08AnalysisProgressScreen> createState() => _S08AnalysisProgressScreenState();
+  State<S08AnalysisProgressScreen> createState() =>
+      _S08AnalysisProgressScreenState();
 }
 
 class _S08AnalysisProgressScreenState extends State<S08AnalysisProgressScreen> {
-  double _progress = 0.25;
-
+  String? _error;
+  bool _loading = false;
   @override
   void initState() {
     super.initState();
-    _startProgress();
+    _runAnalysis();
   }
 
-  void _startProgress() async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    if (mounted) setState(() => _progress = 0.50);
-    await Future.delayed(const Duration(milliseconds: 500));
-    if (mounted) setState(() => _progress = 0.75);
-    await Future.delayed(const Duration(milliseconds: 600));
-    if (mounted) setState(() => _progress = 1.0);
-    await Future.delayed(const Duration(milliseconds: 400));
-    if (mounted) {
-      if (widget.onAnalysisComplete != null) {
-        widget.onAnalysisComplete!();
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const S09FeedAnalysisResultsScreen()),
-        );
+  Future<void> _runAnalysis() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final result = await ApiService.analyzeBatch(
+        feedType: widget.feedType,
+        scenario: widget.scenario,
+      );
+      if (!mounted) return;
+      var photoAttached = false;
+      String? photoError;
+      if (widget.imagePath != null) {
+        try {
+          await ApiService.attachBatchImage(
+            batchId: result.batchId,
+            imagePath: widget.imagePath!,
+          );
+          photoAttached = true;
+        } catch (error) {
+          photoError = error.toString().replaceFirst('Exception: ', '');
+        }
       }
+      if (!mounted) return;
+      final withheld = [
+        'RESULT NOT TRUSTED',
+        'SUSPECTED ADULTERATION',
+      ].contains(result.evidence.trustStatus);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => S09FeedAnalysisResultsScreen(
+            scanResult: {
+              'batch_id': result.batchId,
+              'feed_type': result.feedType,
+              'crude_protein': result.nutritionalAnalysis.crudeProteinPct,
+              'dry_matter': result.nutritionalAnalysis.dryMatterPct,
+              'ndf': result.nutritionalAnalysis.ndfPct,
+              'adf': result.nutritionalAnalysis.adfPct,
+              'trust_status': result.evidence.trustStatus,
+              'evidence_score': result.evidence.evidenceScore,
+              'recommendation': result.evidence.recommendation,
+              'withhold_values': withheld,
+              'data_badge': result.nutritionalAnalysis.dataBadge,
+              'screening_summary': result.cvScreening.screeningSummary,
+              'advisories': result.advisories
+                  .map((item) => item.message)
+                  .toList(),
+              'photo_attached': photoAttached,
+              'photo_error': photoError,
+            },
+          ),
+        ),
+      );
+    } catch (error) {
+      if (mounted)
+        setState(() {
+          _loading = false;
+          _error = error.toString().replaceFirst('Exception: ', '');
+        });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(title: const Text('Analysis'), leading: const SizedBox.shrink()),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+    final content = _error != null
+        ? Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Analyzing...', style: GoogleFonts.plusJakartaSans(fontSize: 22, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 32),
-
-              // Animated Circular Progress Ring 75% matching Screen 8
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  SizedBox(
-                    width: 140,
-                    height: 140,
-                    child: CircularProgressIndicator(
-                      value: _progress,
-                      strokeWidth: 10,
-                      backgroundColor: Colors.grey.shade200,
-                      valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.forestGreen),
-                    ),
-                  ),
-                  Text(
-                    '${(_progress * 100).toInt()}%',
-                    style: GoogleFonts.plusJakartaSans(fontSize: 28, fontWeight: FontWeight.w900, color: AppTheme.forestGreen),
-                  ),
-                ],
+              const Icon(Icons.wifi_off, size: 42, color: Colors.orange),
+              const SizedBox(height: 14),
+              const Text(
+                'Could not reach the FeedSure backend',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 24),
-              Text('AI is analyzing your sample', style: GoogleFonts.plusJakartaSans(color: AppTheme.textMuted, fontSize: 13)),
-              const SizedBox(height: 32),
-
-              // Checklist Items matching Screen 8
-              _buildCheckItem('Processing image', isDone: _progress >= 0.25),
-              _buildCheckItem('NIR spectral analysis', isDone: _progress >= 0.50),
-              _buildCheckItem('Checking for contaminants', isDone: _progress >= 0.75),
-              _buildCheckItem('Calculating nutrition values', isDone: _progress >= 1.0),
-
-              const SizedBox(height: 40),
-
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: AppTheme.lightMint, borderRadius: BorderRadius.circular(12)),
-                child: Row(
-                  children: const [
-                    Icon(Icons.info_outline, color: AppTheme.forestGreen, size: 18),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text('This usually takes 1-2 minutes...', style: TextStyle(fontSize: 11, color: AppTheme.forestGreen, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ),
+              const SizedBox(height: 8),
+              Text(_error!, textAlign: TextAlign.center),
+              const SizedBox(height: 18),
+              FilledButton.icon(
+                onPressed: _runAnalysis,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Try again'),
               ),
             ],
-          ),
-        ),
+          )
+        : Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.science_outlined, size: 42, color: Colors.green),
+              const SizedBox(height: 14),
+              const Text(
+                'Running scenario analysis',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+              const SizedBox(height: 8),
+              Text(widget.feedType + ' · ' + widget.scenario),
+              const SizedBox(height: 18),
+              if (_loading) const LinearProgressIndicator(),
+              const SizedBox(height: 14),
+              const Text(
+                'Software-generated demo data. No physical scan or trained nutrient model is connected.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12),
+              ),
+            ],
+          );
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Demo analysis'),
+        leading: const BackButton(),
       ),
-    );
-  }
-
-  Widget _buildCheckItem(String label, {required bool isDone}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Icon(isDone ? Icons.check_circle : Icons.radio_button_unchecked, color: isDone ? AppTheme.forestGreen : Colors.grey, size: 20),
-          const SizedBox(width: 12),
-          Text(label, style: TextStyle(fontSize: 14, fontWeight: isDone ? FontWeight.bold : FontWeight.normal, color: isDone ? AppTheme.textDark : AppTheme.textMuted)),
-        ],
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: Padding(padding: const EdgeInsets.all(24), child: content),
+        ),
       ),
     );
   }

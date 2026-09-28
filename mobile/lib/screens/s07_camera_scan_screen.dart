@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../config/theme.dart';
@@ -18,22 +19,36 @@ class _S07CameraScanScreenState extends State<S07CameraScanScreen> {
   XFile? _capturedImage;
   final ImagePicker _picker = ImagePicker();
 
-  Future<void> _pickImage(ImageSource source) async {
+  Future<XFile?> _pickImage(ImageSource source) async {
     try {
-      final XFile? photo = await _picker.pickImage(source: source);
-      if (photo != null) {
-        setState(() => _capturedImage = photo);
-      }
-    } catch (_) {}
+      return await _picker.pickImage(source: source, imageQuality: 85);
+    } catch (error) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not open camera or photo library: $error'),
+          ),
+        );
+      return null;
+    }
   }
 
-  void _handleCapture() {
+  Future<void> _captureAndContinue(ImageSource source) async {
+    final photo = await _pickImage(source);
+    if (!mounted) return;
+    if (photo == null) return;
+    setState(() => _capturedImage = photo);
     if (widget.onPhotoCaptured != null) {
       widget.onPhotoCaptured!();
     } else {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const S08AnalysisProgressScreen()),
+        MaterialPageRoute(
+          builder: (_) => S08AnalysisProgressScreen(
+            feedType: widget.feedType ?? "Maize Silage",
+            imagePath: photo.path,
+          ),
+        ),
       );
     }
   }
@@ -44,7 +59,10 @@ class _S07CameraScanScreenState extends State<S07CameraScanScreen> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
-        title: const Text('Feed Analysis - Scan', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Feed Analysis - Scan',
+          style: TextStyle(color: Colors.white),
+        ),
         leading: const BackButton(color: Colors.white),
       ),
       body: SafeArea(
@@ -58,7 +76,12 @@ class _S07CameraScanScreenState extends State<S07CameraScanScreen> {
                     child: Container(
                       color: Colors.grey.shade900,
                       child: _capturedImage != null
-                          ? Image.network(_capturedImage!.path, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _buildMockViewfinder())
+                          ? Image.file(
+                              File(_capturedImage!.path),
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) =>
+                                  _buildMockViewfinder(),
+                            )
                           : _buildMockViewfinder(),
                     ),
                   ),
@@ -69,7 +92,10 @@ class _S07CameraScanScreenState extends State<S07CameraScanScreen> {
                       width: 280,
                       height: 280,
                       decoration: BoxDecoration(
-                        border: Border.all(color: AppTheme.mintAccent, width: 3),
+                        border: Border.all(
+                          color: AppTheme.mintAccent,
+                          width: 3,
+                        ),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Stack(
@@ -78,9 +104,22 @@ class _S07CameraScanScreenState extends State<S07CameraScanScreen> {
                             top: 8,
                             left: 8,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(6)),
-                              child: const Text('Target Area', style: TextStyle(color: AppTheme.mintAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black54,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'Target Area',
+                                style: TextStyle(
+                                  color: AppTheme.mintAccent,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ),
                         ],
@@ -94,7 +133,10 @@ class _S07CameraScanScreenState extends State<S07CameraScanScreen> {
                     left: 20,
                     right: 20,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 16,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.75),
                         borderRadius: BorderRadius.circular(16),
@@ -102,13 +144,20 @@ class _S07CameraScanScreenState extends State<S07CameraScanScreen> {
                       child: Column(
                         children: [
                           Text(
-                            'Capture Feed/Silage Image',
-                            style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                            'Take a photo for this batch',
+                            style: GoogleFonts.plusJakartaSans(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
                           ),
                           const SizedBox(height: 2),
                           const Text(
-                            'Position the sample clearly within green target frame',
-                            style: TextStyle(color: Colors.white70, fontSize: 11),
+                            'The photo is saved with the batch for human review; it is not checked by AI.',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 11,
+                            ),
                           ),
                         ],
                       ),
@@ -126,19 +175,21 @@ class _S07CameraScanScreenState extends State<S07CameraScanScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.photo_library_outlined, color: AppTheme.forestGreen, size: 28),
+                    icon: const Icon(
+                      Icons.photo_library_outlined,
+                      color: AppTheme.forestGreen,
+                      size: 28,
+                    ),
                     onPressed: () async {
-                      await _pickImage(ImageSource.gallery);
-                      _handleCapture();
+                      await _captureAndContinue(ImageSource.gallery);
                     },
                     tooltip: 'Upload from Gallery',
                   ),
-                  
+
                   // Camera Shutter Button
                   InkWell(
                     onTap: () async {
-                      await _pickImage(ImageSource.camera);
-                      _handleCapture();
+                      await _captureAndContinue(ImageSource.camera);
                     },
                     child: Container(
                       width: 64,
@@ -146,17 +197,19 @@ class _S07CameraScanScreenState extends State<S07CameraScanScreen> {
                       decoration: const BoxDecoration(
                         color: AppTheme.forestGreen,
                         shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 8)],
+                        boxShadow: [
+                          BoxShadow(color: Colors.black26, blurRadius: 8),
+                        ],
                       ),
-                      child: const Icon(Icons.camera_alt, color: Colors.white, size: 32),
+                      child: const Icon(
+                        Icons.camera_alt,
+                        color: Colors.white,
+                        size: 32,
+                      ),
                     ),
                   ),
 
-                  IconButton(
-                    icon: const Icon(Icons.flash_on_outlined, color: AppTheme.forestGreen, size: 28),
-                    onPressed: () {},
-                    tooltip: 'Toggle Flash',
-                  ),
+                  const SizedBox(width: 48),
                 ],
               ),
             ),
@@ -172,7 +225,10 @@ class _S07CameraScanScreenState extends State<S07CameraScanScreen> {
       children: const [
         Icon(Icons.grass, size: 80, color: Colors.white24),
         SizedBox(height: 12),
-        Text('Camera Preview Ready', style: TextStyle(color: Colors.white54, fontSize: 13)),
+        Text(
+          'Camera Preview Ready',
+          style: TextStyle(color: Colors.white54, fontSize: 13),
+        ),
       ],
     );
   }

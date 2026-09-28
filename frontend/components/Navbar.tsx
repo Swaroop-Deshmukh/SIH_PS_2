@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { ShieldCheck, Cpu, Globe, UserCheck, AlertTriangle } from 'lucide-react';
+import { Globe, UserCheck } from 'lucide-react';
 import { dictionary, Language } from '../lib/dictionary';
 
 interface NavbarProps {
@@ -49,12 +49,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Nav Items */}
           <nav className="hidden md:flex space-x-1 lg:space-x-2 text-sm font-medium">
             {[
-              { id: 'landing', label: 'Overview' },
-              { id: 'dashboard', label: 'Dashboard' },
-              { id: 'testing', label: 'Feed Testing' },
-              { id: 'silage', label: 'Silage Telemetry' },
-              { id: 'ration', label: 'Dairy Ration' },
-              { id: 'twin', label: 'Digital Twin & Passport' }
+              { id: 'landing', label: t.nav.overview },
+              { id: 'dashboard', label: t.nav.dashboard },
+              { id: 'testing', label: t.nav.testing },
+              { id: 'silage', label: t.nav.silage },
+              { id: 'ration', label: t.nav.ration },
+              { id: 'twin', label: t.nav.twin }
             ].map((item) => (
               <button
                 key={item.id}
@@ -71,7 +71,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </nav>
 
           {/* Right Controls: Language & Farmer/Expert Mode */}
-          <div className="flex items-center space-x-2 sm:space-x-3">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
             
             {/* Language Dropdown */}
             <div className="flex items-center bg-[#2d6a4f]/60 border border-[#40916c]/40 rounded-lg px-2 py-1 text-xs">
@@ -89,32 +89,18 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* Mode Switcher */}
             <button
-              onClick={() => setFarmerMode(!farmerMode)}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+              className={`flex shrink-0 items-center justify-center space-x-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
                 farmerMode
                   ? 'bg-amber-600/30 text-amber-200 border-amber-500/50'
                   : 'bg-emerald-600/30 text-emerald-200 border-emerald-500/50'
               }`}
+              onClick={() => setFarmerMode(!farmerMode)}
               title="Toggle between Farmer Mode (simplified) and Expert Mode (technical parameters)"
             >
               <UserCheck className="w-3.5 h-3.5" />
-              <span>{farmerMode ? t.farmerMode : t.expertMode}</span>
+              <span className="hidden sm:inline">{farmerMode ? t.farmerMode : t.expertMode}</span>
             </button>
 
-          </div>
-        </div>
-
-        {/* Sub-header Notice */}
-        <div className="py-1 border-t border-[#2d6a4f]/50 flex items-center justify-between text-[11px] text-[#74c69d]">
-          <div className="flex items-center space-x-1.5">
-            <Cpu className="w-3 h-3 text-amber-400 animate-pulse" />
-            <span className="font-semibold text-amber-300 tracking-wide">
-              {t.simulatedDeviceBadge}
-            </span>
-          </div>
-          <div className="hidden sm:flex items-center space-x-2">
-            <ShieldCheck className="w-3 h-3 text-emerald-400" />
-            <span>{t.offlineNotice}</span>
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-import random
+import hashlib
 import numpy as np
 
 def generate_nir_spectrum(feed_type: str = "Maize Silage", scenario: str = "healthy"):
@@ -16,30 +16,45 @@ def generate_nir_spectrum(feed_type: str = "Maize Silage", scenario: str = "heal
         "Concentrate":  [0.30, 0.32, 0.35, 0.39, 0.42, 0.40, 0.37, 0.34, 0.32, 0.36, 0.40, 0.45, 0.48, 0.46, 0.43, 0.39, 0.36, 0.34, 0.37, 0.41, 0.44]
     }.get(feed_type, [0.40] * 21)
 
+    # The feed reference curves contain 21 values (800-1000 nm). Extend them
+    # conservatively to the advertised 1050 nm range so each wavelength has a
+    # corresponding measurement. These remain simulated reference curves.
+    base_reflectance = np.interp(
+        wavelengths,
+        list(range(800, 1010, 10)),
+        base_reflectance,
+        left=base_reflectance[0],
+        right=base_reflectance[-1],
+    ).tolist()
+
     points = []
     
+    seed = int.from_bytes(hashlib.sha256(f"{feed_type}|{scenario}".encode()).digest()[:4], "big")
+    rng = np.random.default_rng(seed)
+
     for i in range(1, 6):
         # Apply scenario-specific variance
         if scenario == "healthy":
-            point_variance = np.random.normal(0, 0.008, len(base_reflectance))
+            point_variance = rng.normal(0, 0.008, len(base_reflectance))
         elif scenario == "heterogeneous":
             # Significant variance across sampling points (e.g. wet vs dry spots)
             mult = 1.0 + (i - 3) * 0.12
-            point_variance = np.random.normal(0, 0.03, len(base_reflectance)) + (np.array(base_reflectance) * (mult - 1.0))
+            point_variance = rng.normal(0, 0.03, len(base_reflectance)) + (np.array(base_reflectance) * (mult - 1.0))
         elif scenario == "ood":
             # Out-of-distribution: Wavelength shift / unexpected chemical absorption peak around 940nm
-            point_variance = np.random.normal(0, 0.01, len(base_reflectance))
+            point_variance = rng.normal(0, 0.01, len(base_reflectance))
             point_variance[14:18] += 0.25  # Severe uncalibrated peak
         elif scenario == "adulteration":
             # Urea / Silica adulteration peak around 910nm and 1020nm
-            point_variance = np.random.normal(0, 0.015, len(base_reflectance))
-            point_variance[11:13] -= 0.18 # Urea absorption band anomaly
+            point_variance = rng.normal(0, 0.015, len(base_reflectance))
+            point_variance[11] -= 0.18 # 910 nm demo anomaly; simulation is not chemical confirmation
+            point_variance[22] -= 0.12 # 1020 nm demo anomaly
         elif scenario == "storage_warning":
             # Moisture shift (higher water absorption at 970nm)
-            point_variance = np.random.normal(0, 0.01, len(base_reflectance))
+            point_variance = rng.normal(0, 0.01, len(base_reflectance))
             point_variance[17:20] += 0.12
         else:
-            point_variance = np.random.normal(0, 0.01, len(base_reflectance))
+            point_variance = rng.normal(0, 0.01, len(base_reflectance))
             
         point_reflectance = [round(float(np.clip(b + v, 0.1, 0.9)), 4) for b, v in zip(base_reflectance, point_variance)]
         points.append({
@@ -112,7 +127,7 @@ def generate_cv_screening(feed_type: str = "Maize Silage", scenario: str = "heal
             "foreign_material_detected": True,
             "texture_uniformity": 48.0,
             "color_consistency_score": 61.0,
-            "screening_summary": "Crystalline particulate residues detected. High probability of non-protein nitrogen (NPN / suspected Urea) or mineral silica adulteration."
+            "screening_summary": "Simulated anomaly flag only. No image model or chemical test is connected; urea or silica is not confirmed."
         }
     return {
         "visual_anomaly_detected": False,

@@ -1,10 +1,7 @@
 from typing import Dict, Any, List
 
 def predict_nutritional_parameters(feed_type: str = "Maize Silage", scenario: str = "healthy") -> Dict[str, Any]:
-    """
-    Level 1 Intelligence: Predicts Dry Matter (DM), Moisture, Crude Protein (CP), NDF, ADF.
-    Values are benchmarked against standard Indian agricultural research standards (ICAR).
-    """
+    """Return clearly labelled demo reference values; no trained model is loaded."""
     base_values = {
         "Maize Silage": {"dm": 34.5, "moisture": 65.5, "cp": 8.8, "ndf": 46.2, "adf": 26.1},
         "Green Fodder": {"dm": 22.0, "moisture": 78.0, "cp": 11.2, "ndf": 52.0, "adf": 31.0},
@@ -21,7 +18,7 @@ def predict_nutritional_parameters(feed_type: str = "Maize Silage", scenario: st
             "ndf_pct": base_values["ndf"],
             "adf_pct": base_values["adf"],
             "is_simulated_data": True,
-            "data_badge": "SIMULATED PROTOTYPE DATA"
+            "data_badge": "SIMULATED DEMO REFERENCE — NOT A MODEL PREDICTION"
         }
     elif scenario == "storage_warning":
         # Higher moisture, lower protein due to degradation
@@ -32,7 +29,7 @@ def predict_nutritional_parameters(feed_type: str = "Maize Silage", scenario: st
             "ndf_pct": 51.5,
             "adf_pct": 30.2,
             "is_simulated_data": True,
-            "data_badge": "SIMULATED PROTOTYPE DATA"
+            "data_badge": "SIMULATED DEMO REFERENCE — NOT A MODEL PREDICTION"
         }
     
     return {
@@ -42,7 +39,7 @@ def predict_nutritional_parameters(feed_type: str = "Maize Silage", scenario: st
         "ndf_pct": base_values["ndf"],
         "adf_pct": base_values["adf"],
         "is_simulated_data": True,
-        "data_badge": "SIMULATED PROTOTYPE DATA"
+        "data_badge": "SIMULATED DEMO REFERENCE — NOT A MODEL PREDICTION"
     }
 
 
@@ -55,9 +52,9 @@ def evaluate_dairy_ration(nutritional_data: Dict[str, Any], dairy_profile: Dict[
     dry_count = dairy_profile.get("dry_animals", 7)
     total_animals = lactating_count + dry_count
     
-    # Target requirements per lactating cow per day
-    # Approx: 14 kg DM, 13.5% CP, 32-38% NDF
-    target_cp_pct = 13.5
+    # Illustrative demo targets only. These are not a validated ration prescription.
+    ration_group = dairy_profile.get("ration_group", "lactating")
+    target_cp_pct = 11.0 if ration_group == "dry" else 13.5
     target_ndf_min = 32.0
     target_ndf_max = 40.0
     
@@ -65,8 +62,13 @@ def evaluate_dairy_ration(nutritional_data: Dict[str, Any], dairy_profile: Dict[
     tested_ndf = nutritional_data.get("ndf_pct", 46.2)
 
     # Compute weighted crude protein of feed basket
-    total_kg = sum(item.get("quantity_kg", 0) for item in feed_basket) or 1
-    weighted_cp = sum(item.get("quantity_kg", 0) * item.get("cp_pct", 9.0) for item in feed_basket) / total_kg
+    # Ingredient CP is stored on a dry-matter basis. Weight by dry-matter
+    # intake rather than as-fed kilograms to avoid mixing moisture regimes.
+    total_dm_kg = sum(item.get("quantity_kg", 0) * item.get("dm_pct", 100.0) / 100.0 for item in feed_basket) or 1
+    weighted_cp = sum(
+        item.get("quantity_kg", 0) * item.get("dm_pct", 100.0) / 100.0 * item.get("cp_pct", 9.0)
+        for item in feed_basket
+    ) / total_dm_kg
 
     cp_gap = round(target_cp_pct - weighted_cp, 1)
 
@@ -92,6 +94,8 @@ def evaluate_dairy_ration(nutritional_data: Dict[str, Any], dairy_profile: Dict[
             "tested_feed_cp_pct": tested_cp,
             "basket_weighted_cp_pct": round(weighted_cp, 1),
             "target_cp_pct": target_cp_pct,
+            "ration_group": ration_group,
+            "basis": "Weighted crude protein on a dry-matter basis; illustrative demo targets only.",
             "cp_gap_pct": cp_gap,
             "cp_status": cp_status,
             "fiber_status": fiber_status

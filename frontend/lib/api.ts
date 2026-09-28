@@ -19,8 +19,62 @@ export interface BatchAnalyzeResponse {
   farm_profile: FarmProfile; feed_basket: BasketItem[];
   data_provenance: { mode: string; measurement_source: string; nutrition_source: string; vision_source: string; evidence_source: string; storage_source: string; record_created_at: string };
 }
+export interface FeedVisionAnalysis {
+  analysis_type: string;
+  feed_type_evaluated?: string;
+  image_quality?: {
+    verdict: string;
+    is_acceptable: boolean;
+    sharpness_score: number;
+    mean_brightness: number;
+    quality_issues: string[];
+  };
+  visual_anomaly_detected?: boolean;
+  anomaly_score?: number;
+  mould_risk_level?: string;
+  mould_coverage_pct?: number;
+  foreign_material_detected?: boolean;
+  texture_uniformity?: number;
+  color_consistency_score?: number;
+  color_distribution?: {
+    green_foliage_pct: number;
+    golden_cured_pct: number;
+    dark_spoilage_pct: number;
+    pale_mould_like_pct: number;
+  };
+  screening_summary?: string;
+  scientific_boundary_notice?: string;
+}
+
+export interface UreaStripAnalysis {
+  analysis_type: string;
+  strip_status: string;
+  risk_level: string;
+  estimated_urea_equivalent: string;
+  confidence: string;
+  colorimetric_data: {
+    pad_hex_color: string;
+    rgb: number[];
+    hsv: { hue_deg: number; saturation: number; value: number };
+    cielab: { L: number; a: number; b: number };
+  };
+  advisory: string;
+  scientific_boundary_notice: string;
+}
+
 export interface ApiHealth { status: string; system: string; storage: string; data_mode: string; version: string; }
-export interface BatchImage { attachment_id: string; batch_id: string; original_name: string; content_type: string; size_bytes: number; created_at: string; url?: string; image_analysis?: string; message?: string; }
+export interface BatchImage {
+  attachment_id: string;
+  batch_id: string;
+  original_name: string;
+  content_type: string;
+  size_bytes: number;
+  created_at: string;
+  url?: string;
+  image_analysis?: FeedVisionAnalysis | any;
+  analysis?: FeedVisionAnalysis | any;
+  message?: string;
+}
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -57,4 +111,36 @@ export async function uploadBatchImage(batchId: string, file: File): Promise<Bat
     throw new Error(detail);
   }
   return response.json() as Promise<BatchImage>;
+}
+
+export async function analyzeFeedPhoto(file: File, feedType: string = "Maize Silage"): Promise<FeedVisionAnalysis> {
+  const form = new FormData();
+  form.append("image", file);
+  const response = await fetch(`${API_BASE_URL}/vision/feed-surface?feed_type=${encodeURIComponent(feedType)}`, {
+    method: "POST",
+    body: form,
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    let detail = "Visual analysis failed (" + response.status + ")";
+    try { const body = await response.json(); if (body.detail) detail = body.detail; } catch {}
+    throw new Error(detail);
+  }
+  return response.json() as Promise<FeedVisionAnalysis>;
+}
+
+export async function analyzeUreaStripPhoto(file: File): Promise<UreaStripAnalysis> {
+  const form = new FormData();
+  form.append("image", file);
+  const response = await fetch(`${API_BASE_URL}/vision/urea-strip`, {
+    method: "POST",
+    body: form,
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    let detail = "Urea strip test failed (" + response.status + ")";
+    try { const body = await response.json(); if (body.detail) detail = body.detail; } catch {}
+    throw new Error(detail);
+  }
+  return response.json() as Promise<UreaStripAnalysis>;
 }

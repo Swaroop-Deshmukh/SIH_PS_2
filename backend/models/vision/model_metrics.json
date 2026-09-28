@@ -1,0 +1,59 @@
+{
+  "trained_at": "2026-09-28T23:14:00+05:30",
+  "dataset_source": "real_images (user-uploaded samples across 5 feed classes with 8x augmentation)",
+  "framework": "scikit-learn 1.9.1",
+  "models": {
+    "feed_classifier": {
+      "algorithm": "RandomForestClassifier",
+      "n_estimators": 120,
+      "classes": [
+        "Maize Silage",
+        "Green Fodder",
+        "Dry Fodder",
+        "Concentrate"
+      ],
+      "accuracy": 1.0,
+      "f1_score": 1.0,
+      "top_discriminative_features": [
+        [
+          "mean_g",
+          0.0785
+        ],
+        [
+          "mean_r",
+          0.0778
+        ],
+        [
+          "mean_gray",
+          0.0717
+        ],
+        [
+          "std_s",
+          0.0669
+        ],
+        [
+          "mean_v",
+          0.0645
+        ],
+        [
+          "pct_green",
+          0.0527
+        ]
+      ]
+    },
+    "anomaly_detector": {
+      "algorithm": "RandomForestClassifier (Balanced)",
+      "target": "Surface Mould & Spoilage Anomaly",
+      "accuracy": 1.0,
+      "f1_score": 1.0
+    },
+    "urea_colorimeter": {
+      "algorithm": "RandomForestRegressor + Classifier",
+      "chemical_assay": "Urease + Bromothymol Blue Paper Strip",
+      "r2_score": 0.9685,
+      "rmse_pct": 0.1313,
+      "classification_accuracy": 1.0
+    }
+  },
+  "scientific_boundary": "Models provide rapid screening and triage. They do not substitute for standard wet-chemistry Kjeldahl or HPLC/ELISA aflatoxin assays."
+}

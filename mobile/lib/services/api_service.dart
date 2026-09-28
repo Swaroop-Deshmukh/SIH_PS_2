@@ -56,4 +56,37 @@ class ApiService {
     }
     return Map<String, dynamic>.from(body as Map);
   }
+
+  static Future<Map<String, dynamic>> analyzeFeedPhoto({
+    required String imagePath,
+    String feedType = 'Maize Silage',
+  }) async {
+    final uri = Uri.parse('$baseUrl/vision/feed-surface?feed_type=${Uri.encodeComponent(feedType)}');
+    final request = http.MultipartRequest('POST', uri);
+    request.files.add(await http.MultipartFile.fromPath('image', imagePath));
+    final streamed = await request.send().timeout(const Duration(seconds: 30));
+    final response = await http.Response.fromStream(streamed);
+    final body = jsonDecode(response.body);
+    if (response.statusCode != 200) {
+      final detail = body is Map ? body['detail']?.toString() : null;
+      throw Exception(detail ?? 'Visual screening failed (${response.statusCode}).');
+    }
+    return Map<String, dynamic>.from(body as Map);
+  }
+
+  static Future<Map<String, dynamic>> analyzeUreaStripPhoto({
+    required String imagePath,
+  }) async {
+    final uri = Uri.parse('$baseUrl/vision/urea-strip');
+    final request = http.MultipartRequest('POST', uri);
+    request.files.add(await http.MultipartFile.fromPath('image', imagePath));
+    final streamed = await request.send().timeout(const Duration(seconds: 30));
+    final response = await http.Response.fromStream(streamed);
+    final body = jsonDecode(response.body);
+    if (response.statusCode != 200) {
+      final detail = body is Map ? body['detail']?.toString() : null;
+      throw Exception(detail ?? 'Urea strip test failed (${response.statusCode}).');
+    }
+    return Map<String, dynamic>.from(body as Map);
+  }
 }

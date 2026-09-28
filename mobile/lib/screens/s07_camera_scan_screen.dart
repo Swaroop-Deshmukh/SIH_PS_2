@@ -144,16 +144,17 @@ class _S07CameraScanScreenState extends State<S07CameraScanScreen> {
                       child: Column(
                         children: [
                           Text(
-                            'Take a photo for this batch',
+                            'Feed Surface & Visual Screening',
                             style: GoogleFonts.plusJakartaSans(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
                               fontSize: 15,
                             ),
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 4),
                           const Text(
-                            'The photo is saved with the batch for human review; it is not checked by AI.',
+                            'Pixel-level analysis checks texture uniformity, color distribution, and surface anomalies.',
+                            textAlign: TextAlign.center,
                             style: TextStyle(
                               color: Colors.white70,
                               fontSize: 11,

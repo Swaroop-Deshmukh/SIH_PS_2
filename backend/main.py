@@ -15,6 +15,7 @@ from services.evidence import evaluate_evidence
 from services.nutrition import predict_nutritional_parameters, evaluate_dairy_ration
 from services.advisory import generate_advisories
 from services.digital_twin import create_digital_twin, generate_integrity_hash
+from services.vision import analyze_feed_surface, analyze_urea_strip, get_vision_model_metrics
 
 app = FastAPI(
     title="FeedSure 360 Intelligence API",
@@ -189,7 +190,8 @@ def read_batch(batch_id: str) -> dict[str, Any]:
 
 @app.post("/api/batches/{batch_id}/images")
 async def attach_batch_image(batch_id: str, image: UploadFile = File(...)) -> dict[str, Any]:
-    if get_batch(batch_id) is None:
+    batch = get_batch(batch_id)
+    if batch is None:
         raise HTTPException(status_code=404, detail="Batch not found. Run the feed demo first.")
     content_type = (image.content_type or "").lower()
     if content_type not in IMAGE_TYPES:
@@ -200,6 +202,17 @@ async def attach_batch_image(batch_id: str, image: UploadFile = File(...)) -> di
     extension, signature = IMAGE_TYPES[content_type]
     if not contents.startswith(signature) or (content_type == "image/webp" and contents[8:12] != b"WEBP"):
         raise HTTPException(status_code=415, detail="The selected file does not match its image type.")
+
+    # Execute pixel-level computer vision analysis on uploaded feed image
+    feed_type = batch.get("feed_type", "Maize Silage")
+    try:
+        analysis = analyze_feed_surface(contents, feed_type=feed_type)
+    except Exception as exc:
+        analysis = {
+            "analysis_type": "FEED_SURFACE_VISION",
+            "error": str(exc),
+            "screening_summary": "Image received but automated visual screening could not be processed.",
+        }
 
     attachment_id = uuid4().hex
     stored_name = f"{attachment_id}.{extension}"
@@ -214,8 +227,62 @@ async def attach_batch_image(batch_id: str, image: UploadFile = File(...)) -> di
         "content_type": content_type,
         "size_bytes": len(contents),
         "created_at": datetime.now(timezone.utc).isoformat(),
+        "analysis": analysis,
     })
-    return {**record, "image_analysis": "NOT PERFORMED — no image model is connected", "message": "Photo saved to this batch for human review. It was not analyzed for mould, toxins, or adulteration."}
+    # Fuse real camera visual screening into the batch digital twin evidence
+    if "error" not in analysis:
+        twin = batch.get("digital_twin", {})
+        nir = twin.get("nir_spectrum", {})
+        scenario = batch.get("scenario", "healthy")
+        updated_evidence = evaluate_evidence(nir, analysis, scenario=scenario)
+        twin["evidence"] = updated_evidence
+        twin["cv_screening"] = analysis
+        save_batch(batch)
+
+    return {
+        **record,
+        "image_analysis": analysis,
+        "updated_evidence": batch.get("digital_twin", {}).get("evidence"),
+        "message": f"Computer vision analysis complete: {analysis.get('screening_summary', 'Visual features extracted.')}",
+    }
+
+
+@app.post("/api/vision/feed-surface")
+@app.post("/ml/vision/feed-surface")
+async def vision_feed_surface(
+    image: UploadFile = File(...),
+    feed_type: str = "Maize Silage",
+) -> dict[str, Any]:
+    """Standalone endpoint for real-time computer vision screening of feed samples."""
+    content_type = (image.content_type or "").lower()
+    if content_type not in IMAGE_TYPES:
+        raise HTTPException(status_code=415, detail="Choose a JPEG, PNG, or WebP image.")
+    contents = await image.read(MAX_IMAGE_BYTES + 1)
+    if len(contents) > MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=413, detail="Images must be 8 MB or smaller.")
+    return analyze_feed_surface(contents, feed_type=feed_type)
+
+
+@app.post("/api/vision/urea-strip")
+@app.post("/ml/vision/urea-strip")
+async def vision_urea_strip(
+    image: UploadFile = File(...),
+) -> dict[str, Any]:
+    """Rapid chemical test: smartphone-readable paper strip colorimetry for urea adulteration."""
+    content_type = (image.content_type or "").lower()
+    if content_type not in IMAGE_TYPES:
+        raise HTTPException(status_code=415, detail="Choose a JPEG, PNG, or WebP image.")
+    contents = await image.read(MAX_IMAGE_BYTES + 1)
+    if len(contents) > MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=413, detail="Images must be 8 MB or smaller.")
+    return analyze_urea_strip(contents)
+
+
+@app.get("/api/vision/models/metrics")
+@app.get("/ml/vision/models/metrics")
+def read_vision_model_metrics() -> dict[str, Any]:
+    """Returns training metrics, accuracy, and calibration parameters for vision models."""
+    return get_vision_model_metrics()
 
 
 @app.get("/api/batches/{batch_id}/images")

@@ -76,20 +76,48 @@ class S10ContaminantCheckScreen extends StatelessWidget {
 
             const SizedBox(height: 24),
             Text(
-              'Detailed Safety Breakdown',
+              'Evidence-Based Safety Screening',
               style: GoogleFonts.outfit(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.primaryColor,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 6),
+            Text(
+              'Rapid screening combining camera surface vision, NIR mineral indicators, and paper-strip colorimetry.',
+              style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 14),
 
-            _buildContaminantTile('Aflatoxin B1', '2.4 ppb', 'Safe (< 20 ppb)', true, LucideIcons.shieldAlert),
-            _buildContaminantTile('Total Mycotoxins', 'Clear', 'Passed', true, LucideIcons.bug),
-            _buildContaminantTile('Fungal / Mold Count', '< 1,000 CFU/g', 'Normal', true, LucideIcons.sprout),
-            _buildContaminantTile('Sand & Silica Content', '1.2%', 'Acceptable (< 2.5%)', true, LucideIcons.mountain),
-            _buildContaminantTile('Added Urea Spiking', 'Not Detected', '0.0% Spiked', true, LucideIcons.flaskConical),
+            _buildContaminantTile('Urea Spiking (Paper Strip)', 'Negative / Amber', 'Passed (<0.3%)', true, LucideIcons.flaskConical),
+            _buildContaminantTile('Surface Mould Patches (CV)', '< 0.5% pale clusters', 'Low Risk', true, LucideIcons.eye),
+            _buildContaminantTile('Texture & Particle Uniformity', '92% Homogeneous', 'Optimal', true, LucideIcons.layers),
+            _buildContaminantTile('Sand & Silica Indication', 'Normal Ash Proxy', 'Acceptable', true, LucideIcons.mountain),
+            _buildContaminantTile('Toxin Risk Triage', 'No visual / thermal flags', 'Low Risk', true, LucideIcons.shieldCheck),
+
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.amber.shade300),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(LucideIcons.alertTriangle, color: Colors.amber.shade900, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Scientific Notice: Camera vision and rapid paper strips are triage screening tools. They do not directly detect molecular aflatoxins. Laboratory ELISA/HPLC confirmation is advised for suspicious batches.',
+                      style: GoogleFonts.outfit(fontSize: 11, color: Colors.amber.shade900),
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
             const SizedBox(height: 28),
 

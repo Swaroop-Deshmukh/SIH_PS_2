@@ -51,8 +51,12 @@ def initialize_database() -> None:
         db.execute("""CREATE TABLE IF NOT EXISTS batch_images (
             attachment_id TEXT PRIMARY KEY, batch_id TEXT NOT NULL, original_name TEXT NOT NULL,
             stored_name TEXT NOT NULL, content_type TEXT NOT NULL, size_bytes INTEGER NOT NULL,
-            created_at TEXT NOT NULL
+            created_at TEXT NOT NULL, analysis_json TEXT
         )""")
+        try:
+            db.execute("ALTER TABLE batch_images ADD COLUMN analysis_json TEXT")
+        except sqlite3.OperationalError:
+            pass
         existing = db.execute("SELECT 1 FROM app_settings WHERE setting_key='farm_context'").fetchone()
         if existing is None:
             db.execute(
@@ -99,21 +103,42 @@ def list_batches(limit: int = 50) -> list[dict[str, Any]]:
 
 
 def save_batch_image(image: dict[str, Any]) -> dict[str, Any]:
+    analysis_raw = image.get("analysis")
+    analysis_json = json.dumps(analysis_raw) if analysis_raw else None
     with connect() as db:
         db.execute(
-            "INSERT INTO batch_images(attachment_id,batch_id,original_name,stored_name,content_type,size_bytes,created_at) VALUES(?,?,?,?,?,?,?)",
-            (image["attachment_id"], image["batch_id"], image["original_name"], image["stored_name"], image["content_type"], image["size_bytes"], image["created_at"]),
+            "INSERT INTO batch_images(attachment_id,batch_id,original_name,stored_name,content_type,size_bytes,created_at,analysis_json) VALUES(?,?,?,?,?,?,?,?)",
+            (image["attachment_id"], image["batch_id"], image["original_name"], image["stored_name"], image["content_type"], image["size_bytes"], image["created_at"], analysis_json),
         )
-    return {key: value for key, value in image.items() if key != "stored_name"}
+    clean = {key: value for key, value in image.items() if key != "stored_name"}
+    clean["analysis"] = analysis_raw
+    return clean
 
 
 def get_batch_image(attachment_id: str) -> dict[str, Any] | None:
     with connect() as db:
         row = db.execute("SELECT * FROM batch_images WHERE attachment_id=?", (attachment_id,)).fetchone()
-    return dict(row) if row else None
+    if not row:
+        return None
+    d = dict(row)
+    analysis_raw = d.get("analysis_json")
+    d["analysis"] = json.loads(analysis_raw) if analysis_raw else None
+    return d
 
 
 def list_batch_images(batch_id: str) -> list[dict[str, Any]]:
     with connect() as db:
         rows = db.execute("SELECT * FROM batch_images WHERE batch_id=? ORDER BY created_at DESC", (batch_id,)).fetchall()
-    return [{key: value for key, value in dict(row).items() if key != "stored_name"} for row in rows]
+    results = []
+    for row in rows:
+        d = dict(row)
+        analysis_raw = d.get("analysis_json")
+        item = {key: value for key, value in d.items() if key not in ("stored_name", "analysis_json")}
+        item["analysis"] = json.loads(analysis_raw) if analysis_raw else None
+        results.append(item)
+    return results
+
+
+# Auto-initialize on load so tables always exist
+initialize_database()
+

@@ -137,3 +137,28 @@ def preprocess_spectrum_suite(spectrum: Union[list, np.ndarray]) -> Dict[str, An
         "recommended_processed": [round(float(v), 5) for v in processed_recommended],
         "pipeline_signature": "SNV + Savitzky-Golay(w=5, p=2, d=1)",
     }
+
+
+def preprocess_spectrum(
+    spectrum: Union[list, np.ndarray],
+    method: str = "snv_savgol"
+) -> np.ndarray:
+    """
+    Standardizes a 1D or 2D spectral array using standard NIR chemometric pipeline:
+    - 'snv_savgol': SNV centering/scaling followed by Savitzky-Golay 1st derivative (w=5, p=2, d=1).
+    - 'snv': SNV centering/scaling alone.
+    - 'savgol': Savitzky-Golay 1st derivative alone.
+    - 'detrend': Polynomial baseline detrending.
+    """
+    arr = np.asarray(spectrum, dtype=np.float64)
+    if method == "snv":
+        return apply_snv(arr)
+    elif method == "savgol":
+        return apply_savgol(arr, window_length=5, polyorder=2, deriv=1)
+    elif method == "detrend":
+        return apply_detrend(arr, polyorder=2)
+    elif method == "snv_savgol":
+        snv_res = apply_snv(arr)
+        return apply_savgol(snv_res, window_length=5, polyorder=2, deriv=1)
+    else:
+        return arr

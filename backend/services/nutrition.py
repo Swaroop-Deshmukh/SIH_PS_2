@@ -1,46 +1,32 @@
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional, Union
+import numpy as np
+from services.chemometrics import get_chemometrics_engine
+from services.simulator import generate_nir_spectrum
 
-def predict_nutritional_parameters(feed_type: str = "Maize Silage", scenario: str = "healthy") -> Dict[str, Any]:
-    """Return clearly labelled demo reference values; no trained model is loaded."""
-    base_values = {
-        "Maize Silage": {"dm": 34.5, "moisture": 65.5, "cp": 8.8, "ndf": 46.2, "adf": 26.1},
-        "Green Fodder": {"dm": 22.0, "moisture": 78.0, "cp": 11.2, "ndf": 52.0, "adf": 31.0},
-        "Dry Fodder":   {"dm": 88.5, "moisture": 11.5, "cp": 4.2,  "ndf": 68.0, "adf": 41.5},
-        "Concentrate":  {"dm": 90.0, "moisture": 10.0, "cp": 18.5, "ndf": 28.0, "adf": 14.0}
-    }.get(feed_type, {"dm": 35.0, "moisture": 65.0, "cp": 9.0, "ndf": 45.0, "adf": 26.0})
 
-    if scenario == "adulteration":
-        # Fake high crude protein reading due to non-protein nitrogen (Urea)
-        return {
-            "dry_matter_pct": base_values["dm"],
-            "moisture_pct": base_values["moisture"],
-            "crude_protein_pct": 24.8, # Unusually high for silage
-            "ndf_pct": base_values["ndf"],
-            "adf_pct": base_values["adf"],
-            "is_simulated_data": True,
-            "data_badge": "SIMULATED DEMO REFERENCE — NOT A MODEL PREDICTION"
-        }
-    elif scenario == "storage_warning":
-        # Higher moisture, lower protein due to degradation
-        return {
-            "dry_matter_pct": 31.0,
-            "moisture_pct": 69.0,
-            "crude_protein_pct": 7.2,
-            "ndf_pct": 51.5,
-            "adf_pct": 30.2,
-            "is_simulated_data": True,
-            "data_badge": "SIMULATED DEMO REFERENCE — NOT A MODEL PREDICTION"
-        }
-    
-    return {
-        "dry_matter_pct": base_values["dm"],
-        "moisture_pct": base_values["moisture"],
-        "crude_protein_pct": base_values["cp"],
-        "ndf_pct": base_values["ndf"],
-        "adf_pct": base_values["adf"],
-        "is_simulated_data": True,
-        "data_badge": "SIMULATED DEMO REFERENCE — NOT A MODEL PREDICTION"
-    }
+def predict_nutritional_parameters(
+    feed_type: str = "Maize Silage",
+    scenario: str = "healthy",
+    nir_data: Optional[Dict[str, Any]] = None,
+    spectrum: Optional[Union[List[float], np.ndarray]] = None,
+) -> Dict[str, Any]:
+    """
+    Chemometrics Nutritional Inference (ISO 12099 / ASTM E1655):
+    Predicts Dry Matter (DM %), Moisture %, Crude Protein (CP %), NDF %, and ADF %
+    from preprocessed diffuse reflectance NIR spectra using trained Partial Least Squares
+    Regression (PLSR) models and calculates real Mahalanobis calibration domain distance (D_M).
+    """
+    engine = get_chemometrics_engine()
+
+    if spectrum is not None:
+        return engine.predict_spectrum(spectrum, feed_type=feed_type)
+
+    if nir_data is not None and "points" in nir_data:
+        return engine.predict_multi_point(nir_data, feed_type=feed_type)
+
+    # Generate scenario NIR spectrum and run through real chemometrics PLSR model
+    nir = generate_nir_spectrum(feed_type=feed_type, scenario=scenario)
+    return engine.predict_multi_point(nir, feed_type=feed_type)
 
 
 def evaluate_dairy_ration(nutritional_data: Dict[str, Any], dairy_profile: Dict[str, Any], feed_basket: List[Dict[str, Any]]) -> Dict[str, Any]:

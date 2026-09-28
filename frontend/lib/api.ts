@@ -12,7 +12,48 @@ export interface BatchAnalyzeResponse {
   cv_screening: { visual_anomaly_detected: boolean; anomaly_score: number; mould_risk_level: string; mould_coverage_pct: number; foreign_material_detected: boolean; texture_uniformity: number; color_consistency_score: number; screening_summary: string };
   storage_telemetry: { ph: number; temperature_celsius: number; humidity_pct: number; moisture_pct: number; exposure_days: number; spoilage_risk_index: number; status: string; telemetry_badge: string };
   evidence: { evidence_score: number; evidence_level: string; trust_status: string; metrics: { spectral_quality: number; sample_consistency: number; calibration_fit: number; prediction_uncertainty: number; visual_agreement: number; ood_distance: number }; untrusted_reasons: string[]; recommendation: string };
-  nutritional_analysis: { dry_matter_pct: number; moisture_pct: number; crude_protein_pct: number; ndf_pct: number; adf_pct: number; is_simulated_data: boolean; data_badge: string };
+  nutritional_analysis: {
+    dry_matter_pct: number;
+    moisture_pct: number;
+    crude_protein_pct: number;
+    ndf_pct: number;
+    adf_pct: number;
+    is_simulated_data: boolean;
+    data_badge: string;
+    mahalanobis_distance?: number;
+    is_ood?: boolean;
+    domain_status?: string;
+    calibration_fit_pct?: number;
+    uncertainty_sigma?: Record<string, number>;
+    confidence_intervals?: Record<string, [number, number]>;
+    spatial_metrics?: {
+      sample_points_count: number;
+      spectral_cv_pct: number;
+      is_heterogeneous: boolean;
+      anomalous_point_id?: string;
+      cv_threshold_pct: number;
+    };
+    point_predictions?: Array<{
+      point_id: string;
+      dry_matter_pct: number;
+      crude_protein_pct: number;
+      ndf_pct: number;
+      adf_pct: number;
+      moisture_pct: number;
+      mahalanobis_distance: number;
+      is_ood: boolean;
+      domain_status: string;
+    }>;
+    preprocessing?: {
+      raw: number[];
+      snv: number[];
+      savgol_1st_derivative: number[];
+      savgol_2nd_derivative: number[];
+      detrended: number[];
+      recommended_processed: number[];
+      pipeline_signature: string;
+    };
+  };
   dairy_ration: { herd_summary: { lactating_animals: number; dry_animals: number; total_herd: number }; ration_analysis: { tested_feed_cp_pct: number; basket_weighted_cp_pct: number; target_cp_pct: number; cp_gap_pct: number; cp_status: string; fiber_status: string; ration_group?: string; basis?: string }; dairy_interpretation: string };
   advisories: Array<{ id: string; severity: string; category: string; title: string; message: string; verification_required: boolean }>;
   digital_twin: { batch_id: string; feed_type: string; scenario: string; integrity_hash: string; created_at: string; timeline: Array<{ step: string; title: string; timestamp: string; status: string; detail: string }>; passport: { title: string; passport_id: string; issued_at: string; model_version: string; verification_status: string; verification_badge: string } };
@@ -144,3 +185,10 @@ export async function analyzeUreaStripPhoto(file: File): Promise<UreaStripAnalys
   }
   return response.json() as Promise<UreaStripAnalysis>;
 }
+
+export const getChemometricsMetrics = () => request<any>("/chemometrics/models/metrics");
+export const preprocessSpectrum = (spectrum: number[]) =>
+  request<any>("/chemometrics/preprocess", {
+    method: "POST",
+    body: JSON.stringify({ spectrum }),
+  });

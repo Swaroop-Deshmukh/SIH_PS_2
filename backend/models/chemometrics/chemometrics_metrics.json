@@ -1,0 +1,196 @@
+{
+  "timestamp": "2026-09-28T18:57:31.572646+00:00",
+  "total_calibration_samples": 1200,
+  "wavelength_range_nm": [
+    800,
+    1050
+  ],
+  "wavelength_step_nm": 10,
+  "num_bands": 26,
+  "commodities": {
+    "Maize Silage": {
+      "sample_count": 300,
+      "mahalanobis_mean": 0.942,
+      "mahalanobis_p95": 1.471,
+      "pca_explained_variance_pct": [
+        43.51,
+        19.49,
+        11.59,
+        9.8
+      ],
+      "total_pca_variance_pct": 84.39,
+      "nutrients": {
+        "dry_matter_pct": {
+          "r2": 0.962,
+          "rmsecv": 0.48,
+          "sep": 0.48,
+          "rpd": 5.13,
+          "cal_mean": 34.65,
+          "cal_std": 2.46
+        },
+        "crude_protein_pct": {
+          "r2": 0.8472,
+          "rmsecv": 0.311,
+          "sep": 0.311,
+          "rpd": 2.56,
+          "cal_mean": 8.8,
+          "cal_std": 0.8
+        },
+        "ndf_pct": {
+          "r2": 0.8802,
+          "rmsecv": 0.691,
+          "sep": 0.691,
+          "rpd": 2.89,
+          "cal_mean": 46.29,
+          "cal_std": 2.0
+        },
+        "adf_pct": {
+          "r2": 0.8049,
+          "rmsecv": 0.675,
+          "sep": 0.675,
+          "rpd": 2.26,
+          "cal_mean": 26.13,
+          "cal_std": 1.53
+        }
+      }
+    },
+    "Green Fodder": {
+      "sample_count": 300,
+      "mahalanobis_mean": 0.935,
+      "mahalanobis_p95": 1.522,
+      "pca_explained_variance_pct": [
+        36.19,
+        25.37,
+        11.38,
+        10.71
+      ],
+      "total_pca_variance_pct": 83.65,
+      "nutrients": {
+        "dry_matter_pct": {
+          "r2": 0.9628,
+          "rmsecv": 0.378,
+          "sep": 0.378,
+          "rpd": 5.18,
+          "cal_mean": 22.02,
+          "cal_std": 1.96
+        },
+        "crude_protein_pct": {
+          "r2": 0.9046,
+          "rmsecv": 0.31,
+          "sep": 0.31,
+          "rpd": 3.24,
+          "cal_mean": 11.32,
+          "cal_std": 1.0
+        },
+        "ndf_pct": {
+          "r2": 0.9386,
+          "rmsecv": 0.639,
+          "sep": 0.639,
+          "rpd": 4.04,
+          "cal_mean": 52.08,
+          "cal_std": 2.58
+        },
+        "adf_pct": {
+          "r2": 0.827,
+          "rmsecv": 0.757,
+          "sep": 0.757,
+          "rpd": 2.4,
+          "cal_mean": 31.18,
+          "cal_std": 1.82
+        }
+      }
+    },
+    "Dry Fodder": {
+      "sample_count": 300,
+      "mahalanobis_mean": 0.934,
+      "mahalanobis_p95": 1.558,
+      "pca_explained_variance_pct": [
+        35.0,
+        19.45,
+        16.28,
+        10.49
+      ],
+      "total_pca_variance_pct": 81.21,
+      "nutrients": {
+        "dry_matter_pct": {
+          "r2": 0.9443,
+          "rmsecv": 0.443,
+          "sep": 0.443,
+          "rpd": 4.24,
+          "cal_mean": 88.36,
+          "cal_std": 1.88
+        },
+        "crude_protein_pct": {
+          "r2": 0.7529,
+          "rmsecv": 0.279,
+          "sep": 0.279,
+          "rpd": 2.01,
+          "cal_mean": 4.26,
+          "cal_std": 0.56
+        },
+        "ndf_pct": {
+          "r2": 0.9252,
+          "rmsecv": 0.574,
+          "sep": 0.574,
+          "rpd": 3.66,
+          "cal_mean": 67.89,
+          "cal_std": 2.1
+        },
+        "adf_pct": {
+          "r2": 0.8635,
+          "rmsecv": 0.686,
+          "sep": 0.686,
+          "rpd": 2.71,
+          "cal_mean": 41.59,
+          "cal_std": 1.86
+        }
+      }
+    },
+    "Concentrate": {
+      "sample_count": 300,
+      "mahalanobis_mean": 0.936,
+      "mahalanobis_p95": 1.558,
+      "pca_explained_variance_pct": [
+        49.21,
+        21.23,
+        10.96,
+        6.63
+      ],
+      "total_pca_variance_pct": 88.04,
+      "nutrients": {
+        "dry_matter_pct": {
+          "r2": 0.9334,
+          "rmsecv": 0.421,
+          "sep": 0.421,
+          "rpd": 3.88,
+          "cal_mean": 89.98,
+          "cal_std": 1.63
+        },
+        "crude_protein_pct": {
+          "r2": 0.9491,
+          "rmsecv": 0.345,
+          "sep": 0.345,
+          "rpd": 4.43,
+          "cal_mean": 18.3,
+          "cal_std": 1.53
+        },
+        "ndf_pct": {
+          "r2": 0.8856,
+          "rmsecv": 0.606,
+          "sep": 0.606,
+          "rpd": 2.96,
+          "cal_mean": 27.95,
+          "cal_std": 1.79
+        },
+        "adf_pct": {
+          "r2": 0.6412,
+          "rmsecv": 0.73,
+          "sep": 0.73,
+          "rpd": 1.67,
+          "cal_mean": 14.11,
+          "cal_std": 1.22
+        }
+      }
+    }
+  }
+}

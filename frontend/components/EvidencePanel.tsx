@@ -185,6 +185,49 @@ export const EvidencePanel: React.FC<EvidencePanelProps> = ({ lang, data, farmer
           </div>
 
         </div>
+
+        {/* Rapid Adulteration & Mineral Screening Status */}
+        {data.nutritional_analysis?.sand_silica_screening && (
+          <div className="mt-4 pt-4 border-t border-stone-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-stone-50 border border-stone-200 text-xs">
+              <div>
+                <span className="font-bold text-stone-700 block">Sand / Silica (Acid-Insoluble Ash)</span>
+                <span className="text-[11px] text-stone-500">
+                  Estimated AIA: <b>{data.nutritional_analysis.sand_silica_screening.estimated_aia_pct}%</b>
+                </span>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                data.nutritional_analysis.sand_silica_screening.badge_color === "EMERALD"
+                  ? "bg-emerald-100 text-emerald-800"
+                  : data.nutritional_analysis.sand_silica_screening.badge_color === "AMBER"
+                  ? "bg-amber-100 text-amber-800"
+                  : "bg-rose-100 text-rose-800 animate-pulse"
+              }`}>
+                {data.nutritional_analysis.sand_silica_screening.risk_label}
+              </span>
+            </div>
+
+            {data.nutritional_analysis.mineral_balance && (
+              <div className="flex items-center justify-between p-3 rounded-xl bg-stone-50 border border-stone-200 text-xs">
+                <div>
+                  <span className="font-bold text-stone-700 block">Mineral Balance (Ca:P Ratio)</span>
+                  <span className="text-[11px] text-stone-500">
+                    Ratio: <b>{data.nutritional_analysis.mineral_balance.ca_to_p_ratio} : 1</b>
+                  </span>
+                </div>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  data.nutritional_analysis.mineral_balance.badge_color === "EMERALD"
+                    ? "bg-emerald-100 text-emerald-800"
+                    : data.nutritional_analysis.mineral_balance.badge_color === "BLUE"
+                    ? "bg-blue-100 text-blue-800"
+                    : "bg-rose-100 text-rose-800"
+                }`}>
+                  {data.nutritional_analysis.mineral_balance.status_label}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </div>}
 
       {/* EXPLAIN THIS MODAL */}

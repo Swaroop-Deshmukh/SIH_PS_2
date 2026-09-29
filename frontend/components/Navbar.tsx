@@ -1,8 +1,9 @@
 "use client";
 
-import React from 'react';
-import { Globe, UserCheck, Trophy } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Globe, UserCheck, Trophy, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { dictionary, Language } from '../lib/dictionary';
+import { offlineQueue, OfflineStatus } from '../lib/offlineQueue';
 
 interface NavbarProps {
   lang: Language;
@@ -21,6 +22,17 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab
 }) => {
+  const [offlineStatus, setOfflineStatus] = useState<OfflineStatus>({
+    isOnline: true,
+    pendingCount: 0,
+    isSyncing: false,
+    lastSyncedAt: null,
+  });
+
+  useEffect(() => {
+    return offlineQueue.subscribe((s) => setOfflineStatus(s));
+  }, []);
+
   const t = dictionary[lang];
 
   const navItems = [
@@ -81,6 +93,42 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Right Controls: Language & Farmer/Expert Mode */}
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
             
+            {/* Rural Offline Sync Status Pill */}
+            <button
+              onClick={() => offlineQueue.flushQueue()}
+              title={
+                !offlineStatus.isOnline
+                  ? `Offline Mode: ${offlineStatus.pendingCount} actions saved locally. Click to retry sync.`
+                  : offlineStatus.pendingCount > 0
+                  ? `${offlineStatus.pendingCount} pending actions. Click to sync now.`
+                  : "All local farm data synced with server."
+              }
+              className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${
+                !offlineStatus.isOnline
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+                  : offlineStatus.pendingCount > 0
+                  ? 'bg-blue-500/20 text-blue-300 border-blue-500/50 animate-pulse'
+                  : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+              }`}
+            >
+              {!offlineStatus.isOnline ? (
+                <WifiOff className="w-3 h-3 text-amber-400" />
+              ) : offlineStatus.isSyncing ? (
+                <RefreshCw className="w-3 h-3 text-blue-300 animate-spin" />
+              ) : (
+                <Wifi className="w-3 h-3 text-emerald-400" />
+              )}
+              <span>
+                {!offlineStatus.isOnline
+                  ? `Offline (${offlineStatus.pendingCount})`
+                  : offlineStatus.isSyncing
+                  ? 'Syncing...'
+                  : offlineStatus.pendingCount > 0
+                  ? `Sync (${offlineStatus.pendingCount})`
+                  : 'Synced'}
+              </span>
+            </button>
+
             {/* Language Dropdown */}
             <div className="flex items-center bg-[#2d6a4f]/60 border border-[#40916c]/40 rounded-lg px-2 py-1 text-xs">
               <Globe className="w-3.5 h-3.5 text-[#74c69d] mr-1" />

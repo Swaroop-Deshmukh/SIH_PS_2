@@ -45,10 +45,11 @@ def generate_nir_spectrum(feed_type: str = "Maize Silage", scenario: str = "heal
             point_variance = rng.normal(0, 0.01, len(base_reflectance))
             point_variance[14:18] += 0.25  # Severe uncalibrated peak
         elif scenario == "adulteration":
-            # Urea / Silica adulteration peak around 910nm and 1020nm
+            # Urea / Silica adulteration peak around 910nm and 1020nm + sand scattering baseline tilt at 1040-1050nm
             point_variance = rng.normal(0, 0.015, len(base_reflectance))
             point_variance[11] -= 0.18 # 910 nm demo anomaly; simulation is not chemical confirmation
             point_variance[22] -= 0.12 # 1020 nm demo anomaly
+            point_variance[24:26] += 0.16 # High particulate silica scattering baseline tilt at 1040-1050 nm
         elif scenario == "storage_warning":
             # Moisture shift (higher water absorption at 970nm)
             point_variance = rng.normal(0, 0.01, len(base_reflectance))

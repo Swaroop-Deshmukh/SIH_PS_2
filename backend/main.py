@@ -18,6 +18,7 @@ from database import (
 from services.simulator import generate_nir_spectrum, generate_cv_screening, generate_storage_telemetry
 from services.evidence import evaluate_evidence
 from services.nutrition import predict_nutritional_parameters, evaluate_dairy_ration
+from services.ration_optimizer import optimize_dairy_ration
 from services.advisory import generate_advisories
 from services.digital_twin import (
     create_digital_twin, generate_canonical_hash, execute_lifecycle_transition,
@@ -123,6 +124,13 @@ class LifecycleTransitionRequest(BaseModel):
     action: str = "MANUAL_STATUS_ADVANCEMENT"
     actor: str = "FARM_MANAGER"
     notes: str | None = None
+
+
+class RationOptimizeRequest(BaseModel):
+    farm_profile: FarmProfile | None = None
+    feed_basket: list[BasketItem] | None = None
+    price_overrides: dict[str, float] | None = None
+    allow_catalog_expansion: bool = True
 
 
 @app.on_event("startup")
@@ -238,6 +246,14 @@ def analyze_batch(req: BatchAnalyzeRequest) -> dict[str, Any]:
         scenario=req.scenario
     )
 
+    # Phase 8: Mathematical Least-Cost Ration Cost Optimizer (SciPy HiGHS LP)
+    optimizer_result = optimize_dairy_ration(
+        dairy_profile=profile,
+        feed_basket=ration_basket,
+        price_overrides={},
+        allow_catalog_expansion=True
+    )
+
     twin = create_digital_twin(batch_id, req.feed_type, evidence, nutrition, storage_data, req.scenario)
     for evt in twin.get("lifecycle_events", []):
         save_digital_twin_event(evt)
@@ -253,6 +269,7 @@ def analyze_batch(req: BatchAnalyzeRequest) -> dict[str, Any]:
         "nutritional_analysis": nutrition,
         "spatial_sampling": spatial_sampling,
         "dairy_ration": ration,
+        "ration_optimizer": optimizer_result,
         "advisories": advisories,
         "digital_twin": twin,
         "farm_profile": profile,
@@ -266,11 +283,31 @@ def analyze_batch(req: BatchAnalyzeRequest) -> dict[str, Any]:
             "evidence_source": "Multi-Source Evidence Fusion (NIR Consistency, Calibration Fit, Visual Agreement)",
             "storage_source": "Multi-Sensor Storage Telemetry (pH, Temp, Moisture)",
             "chemometrics_model": "PLSRegression(n_components=4) + PCA(n_components=4) with Mahalanobis D_M (threshold=2.50)",
+            "ration_optimizer_solver": "SciPy HiGHS MILP Least-Cost Solver (ICAR/NRC DMI, CP, NDF, ADF constraints)",
             "record_created_at": created_at,
         },
     }
     save_batch(result)
     return result
+
+
+@app.post("/api/dairy/optimize-ration")
+def optimize_ration_endpoint(req: RationOptimizeRequest) -> dict[str, Any]:
+    """
+    Executes Linear Programming optimization to minimize total daily feed cost
+    under NRC / ICAR nutritional constraints for the specified dairy herd context.
+    """
+    context = get_farm_context()
+    profile = req.farm_profile.model_dump() if req.farm_profile else context["farm_profile"]
+    basket = [item.model_dump() for item in req.feed_basket] if req.feed_basket is not None else context["feed_basket"]
+    if not basket:
+        raise HTTPException(status_code=422, detail="At least one feed ingredient is required to optimize ration.")
+    return optimize_dairy_ration(
+        dairy_profile=profile,
+        feed_basket=basket,
+        price_overrides=req.price_overrides or {},
+        allow_catalog_expansion=req.allow_catalog_expansion
+    )
 
 
 @app.get("/api/batches")

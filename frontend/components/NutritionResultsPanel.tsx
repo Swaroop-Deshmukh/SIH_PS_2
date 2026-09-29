@@ -236,6 +236,103 @@ export const NutritionResultsPanel: React.FC<NutritionResultsPanelProps> = ({
         </div>
       </div>
 
+      {/* Sand/Silica (Acid-Insoluble Ash AIA %) & Mineral Balance (Ca:P) Screening */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Acid-Insoluble Ash (AIA % / Sand & Silica) */}
+        {nutrition.sand_silica_screening ? (
+          <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-sm flex flex-col justify-between space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-stone-600">
+                Acid-Insoluble Ash (Sand / Silica %)
+              </span>
+              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                nutrition.sand_silica_screening.badge_color === "EMERALD"
+                  ? "bg-emerald-100 text-emerald-800"
+                  : nutrition.sand_silica_screening.badge_color === "AMBER"
+                  ? "bg-amber-100 text-amber-800"
+                  : "bg-rose-100 text-rose-800"
+              }`}>
+                {nutrition.sand_silica_screening.risk_label}
+              </span>
+            </div>
+
+            <div className="flex items-baseline gap-3">
+              <span className="text-3xl font-black font-mono text-stone-900">
+                {withhold ? "—" : `${nutrition.sand_silica_screening.estimated_aia_pct}%`}
+              </span>
+              <span className="text-xs text-stone-500 font-mono">
+                Baseline Tilt ΔR: {nutrition.sand_silica_screening.baseline_tilt_delta_r > 0 ? "+" : ""}{nutrition.sand_silica_screening.baseline_tilt_delta_r}
+              </span>
+            </div>
+
+            <div className="w-full bg-stone-100 rounded-full h-2 overflow-hidden">
+              <div
+                className={`h-2 rounded-full transition-all ${
+                  nutrition.sand_silica_screening.estimated_aia_pct < 2.5
+                    ? "bg-emerald-500"
+                    : nutrition.sand_silica_screening.estimated_aia_pct <= 5.0
+                    ? "bg-amber-500"
+                    : "bg-rose-500"
+                }`}
+                style={{ width: `${Math.min(100, (nutrition.sand_silica_screening.estimated_aia_pct / 8.0) * 100)}%` }}
+              />
+            </div>
+
+            <p className="text-xs text-stone-600 leading-relaxed border-t border-stone-100 pt-2">
+              {nutrition.sand_silica_screening.advisory}
+            </p>
+          </div>
+        ) : (
+          <div className="bg-stone-50 p-5 rounded-2xl border border-stone-200 text-xs text-stone-500">
+            Acid-Insoluble Ash screening ready with 5-point scan.
+          </div>
+        )}
+
+        {/* Mineral Balance Ratio (Ca:P) */}
+        {nutrition.mineral_balance ? (
+          <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-sm flex flex-col justify-between space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-stone-600">
+                Mineral Ratio (Calcium to Phosphorus Ca:P)
+              </span>
+              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                nutrition.mineral_balance.badge_color === "EMERALD"
+                  ? "bg-emerald-100 text-emerald-800"
+                  : nutrition.mineral_balance.badge_color === "BLUE"
+                  ? "bg-blue-100 text-blue-800"
+                  : nutrition.mineral_balance.badge_color === "AMBER"
+                  ? "bg-amber-100 text-amber-800"
+                  : "bg-rose-100 text-rose-800"
+              }`}>
+                {nutrition.mineral_balance.status_label}
+              </span>
+            </div>
+
+            <div className="flex items-baseline gap-3">
+              <span className="text-3xl font-black font-mono text-[#1b4332]">
+                {withhold ? "—" : `${nutrition.mineral_balance.ca_to_p_ratio} : 1`}
+              </span>
+              <span className="text-xs text-stone-500 font-mono">
+                Est. Ca: {nutrition.mineral_balance.estimated_ca_pct}% · P: {nutrition.mineral_balance.estimated_p_pct}%
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] font-mono text-stone-500 bg-stone-50 p-2 rounded-lg">
+              <span>Ideal Dairy Benchmark:</span>
+              <span className="font-bold text-stone-800">{nutrition.mineral_balance.ideal_range}</span>
+            </div>
+
+            <p className="text-xs text-stone-600 leading-relaxed border-t border-stone-100 pt-2">
+              {nutrition.mineral_balance.advisory}
+            </p>
+          </div>
+        ) : (
+          <div className="bg-stone-50 p-5 rounded-2xl border border-stone-200 text-xs text-stone-500">
+            Mineral balance evaluation ready with full scan.
+          </div>
+        )}
+      </div>
+
       {/* 5-Point Spatial Variance Breakdown Table */}
       <div className="bg-white p-6 sm:p-7 rounded-3xl border border-stone-200 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-3 border-b border-stone-100 gap-2">

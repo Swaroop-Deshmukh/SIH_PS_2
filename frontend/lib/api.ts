@@ -29,6 +29,85 @@ export interface FliegAcidProfile {
   ideal_ratio_benchmark: string;
 }
 
+export interface AcidInsolubleAshResult {
+  estimated_aia_pct: number;
+  baseline_tilt_delta_r: number;
+  baseline_mean_r: number;
+  risk_level: "LOW_CLEAN" | "MODERATE_DUST" | "HIGH_SILICA_RISK" | string;
+  risk_label: string;
+  badge_color: "EMERALD" | "AMBER" | "RED" | string;
+  advisory: string;
+}
+
+export interface MineralBalanceResult {
+  estimated_ca_pct: number;
+  estimated_p_pct: number;
+  ca_to_p_ratio: number;
+  status: "OPTIMAL" | "ACCEPTABLE" | "INVERTED_DEFICIENT_CALCIUM" | "HIGH_CALCIUM_IMBALANCE" | string;
+  status_label: string;
+  badge_color: "EMERALD" | "BLUE" | "AMBER" | "RED" | string;
+  ideal_range: string;
+  advisory: string;
+}
+
+export interface RationAllocationItem {
+  name: string;
+  price_per_kg_inr: number;
+  optimal_as_fed_kg: number;
+  optimal_dm_kg: number;
+  optimal_daily_cost_inr: number;
+  current_as_fed_kg: number;
+  current_daily_cost_inr: number;
+  pct_of_dmi: number;
+  is_forage: boolean;
+  cp_pct: number;
+  dm_pct: number;
+  ndf_pct: number;
+}
+
+export interface RationOptimizerResult {
+  status: "OPTIMAL_FEASIBLE" | "RELAXED_FEASIBLE" | "INFEASIBLE" | string;
+  solver: string;
+  herd_context: {
+    lactation_stage: string;
+    animal_count: number;
+    daily_milk_yield_liters: number;
+    target_dmi_kg: number;
+    target_cp_pct: number;
+    target_cp_kg: number;
+    target_ndf_min_pct: number;
+    target_ndf_max_pct: number;
+  };
+  cost_summary: {
+    current_cost_per_cow_day_inr: number;
+    optimal_cost_per_cow_day_inr: number;
+    daily_saving_per_cow_inr: number;
+    daily_herd_saving_inr: number;
+    monthly_herd_saving_inr: number;
+    savings_pct: number;
+  };
+  nutrition_balance: {
+    current_dmi_kg: number;
+    optimal_dmi_kg: number;
+    current_cp_pct: number;
+    optimal_cp_pct: number;
+    optimal_cp_kg: number;
+    current_ndf_pct: number;
+    optimal_ndf_pct: number;
+    forage_to_concentrate_ratio: string;
+    rumen_acidosis_risk: string;
+  };
+  allocation_table: RationAllocationItem[];
+  advisory: string;
+}
+
+export interface RationOptimizeRequest {
+  farm_profile?: Partial<FarmProfile>;
+  feed_basket?: BasketItem[];
+  price_overrides?: Record<string, number>;
+  allow_catalog_expansion?: boolean;
+}
+
 export interface FliegEvaluation {
   flieg_score: number;
   grade: string;
@@ -180,6 +259,8 @@ export interface BatchAnalyzeResponse {
       recommended_processed: number[];
       pipeline_signature: string;
     };
+    sand_silica_screening?: AcidInsolubleAshResult;
+    mineral_balance?: MineralBalanceResult;
   };
   dairy_ration: {
     herd_summary: { lactating_animals: number; dry_animals: number; total_herd: number };
@@ -199,6 +280,7 @@ export interface BatchAnalyzeResponse {
     };
     dairy_interpretation: string;
   };
+  ration_optimizer?: RationOptimizerResult;
   advisories: Array<{ id: string; severity: string; category: string; title: string; message: string; verification_required: boolean }>;
   digital_twin: {
     batch_id: string;
@@ -455,6 +537,12 @@ export const getFliegIndex = (ph: number, dryMatterPct: number) =>
   request<FliegEvaluation>("/silage/flieg-index", {
     method: "POST",
     body: JSON.stringify({ ph, dry_matter_pct: dryMatterPct }),
+  });
+
+export const optimizeRation = (req: RationOptimizeRequest) =>
+  request<RationOptimizerResult>("/dairy/optimize-ration", {
+    method: "POST",
+    body: JSON.stringify(req),
   });
 
 

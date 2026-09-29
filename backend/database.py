@@ -53,10 +53,15 @@ def initialize_database() -> None:
             stored_name TEXT NOT NULL, content_type TEXT NOT NULL, size_bytes INTEGER NOT NULL,
             created_at TEXT NOT NULL, analysis_json TEXT
         )""")
+        db.execute("""CREATE TABLE IF NOT EXISTS users (
+            user_id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL,
+            full_name TEXT NOT NULL, role TEXT NOT NULL, organization TEXT, phone TEXT, created_at TEXT NOT NULL
+        )""")
         try:
             db.execute("ALTER TABLE batch_images ADD COLUMN analysis_json TEXT")
         except sqlite3.OperationalError:
             pass
+        _seed_default_users(db)
         existing = db.execute("SELECT 1 FROM app_settings WHERE setting_key='farm_context'").fetchone()
         if existing is None:
             db.execute(
@@ -137,6 +142,61 @@ def list_batch_images(batch_id: str) -> list[dict[str, Any]]:
         item["analysis"] = json.loads(analysis_raw) if analysis_raw else None
         results.append(item)
     return results
+
+
+def _seed_default_users(db: sqlite3.Connection) -> None:
+    from services.auth import hash_password
+    default_users = [
+        ("USR-FARMER-01", "farmer", "farmer123", "Ramesh Patil", "farmer", "Shiv Dairy Farm", "+91 98220 12345"),
+        ("USR-OFFICER-01", "officer", "officer123", "Dr. Sunita Deshmukh", "field_officer", "Pune Dairy Development Union", "+91 98220 54321"),
+        ("USR-NUTRI-01", "nutritionist", "nutri123", "Kavita Rao, M.V.Sc", "nutritionist", "National Dairy Technical Services", "+91 98220 99887"),
+        ("USR-LAB-01", "lab", "lab123", "Anand Shinde", "lab_technician", "Regional Feed Quality QA Lab", "+91 98220 11223"),
+    ]
+    for uid, uname, pwd, name, role, org, phone in default_users:
+        exists = db.execute("SELECT 1 FROM users WHERE username=?", (uname,)).fetchone()
+        if not exists:
+            db.execute(
+                "INSERT INTO users (user_id, username, password_hash, full_name, role, organization, phone, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (uid, uname, hash_password(pwd), name, role, org, phone, datetime.now(timezone.utc).isoformat()),
+            )
+
+
+def get_user_by_username(username: str) -> dict[str, Any] | None:
+    with connect() as db:
+        row = db.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
+    return dict(row) if row else None
+
+
+def get_user_by_id(user_id: str) -> dict[str, Any] | None:
+    with connect() as db:
+        row = db.execute("SELECT * FROM users WHERE user_id=?", (user_id,)).fetchone()
+    return dict(row) if row else None
+
+
+def create_user(user_data: dict[str, Any]) -> dict[str, Any]:
+    with connect() as db:
+        db.execute(
+            "INSERT INTO users (user_id, username, password_hash, full_name, role, organization, phone, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                user_data["user_id"],
+                user_data["username"],
+                user_data["password_hash"],
+                user_data["full_name"],
+                user_data.get("role", "farmer"),
+                user_data.get("organization", ""),
+                user_data.get("phone", ""),
+                user_data["created_at"],
+            ),
+        )
+    return {k: v for k, v in user_data.items() if k != "password_hash"}
+
+
+def list_users() -> list[dict[str, Any]]:
+    with connect() as db:
+        rows = db.execute("SELECT user_id, username, full_name, role, organization, phone, created_at FROM users").fetchall()
+    return [dict(r) for r in rows]
 
 
 # Auto-initialize on load so tables always exist

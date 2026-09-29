@@ -7,7 +7,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-DEFAULT_DB = Path(__file__).parent / ".data" / "feedsure.sqlite3"
+is_serverless = bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"))
+DEFAULT_DB = Path("/tmp/feedsure.sqlite3") if is_serverless else Path(__file__).parent / ".data" / "feedsure.sqlite3"
 DB_PATH = Path(os.getenv("FEEDSURE_DB_PATH", str(DEFAULT_DB)))
 
 DEFAULT_CONTEXT: dict[str, Any] = {

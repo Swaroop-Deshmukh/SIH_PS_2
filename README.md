@@ -82,6 +82,27 @@ Use the top **Scenario Controller Bar** to trigger live edge cases:
 
 ---
 
-## 🔒 Security & Traceability
+## 🔒 Security, RBAC & Digital Twin Passport
+- **Authentication**: JWT token authentication with PBKDF2-HMAC-SHA256 password hashing.
+- **Role-Based Access Control (RBAC)**: Distinct permissions for Dairy Farmer, Extension Field Officer, Nutritionist, QA Lab, and Admin.
 - **Feed Digital Twin**: Tracks lifecycle (`TEST → STORE → MONITOR → RETEST → USE`).
-- **Quality Passport**: Hashed using **SHA-256** for immutable audit trails.
+- **Quality Passport**: Hashed using **SHA-256** for immutable audit trails, paired with an on-screen SVG QR code for instant mobile verification.
+
+---
+
+## 📡 Smart Feed Zone IoT Node (Barn-Mounted)
+- Continuous monitoring of barn trough microclimate (temperature, relative humidity, feed weight, and exposure hours).
+- Powered by simulated **ESP32 + SHT31/DHT22 + HX711 load cell** node architecture under ₹1,850 INR target BoM.
+- Real-time tare/zero-calibration and aerobic deterioration alerts.
+
+---
+
+## 📚 Technical Documentation Suite (`docs/`)
+- [System Architecture](file:///docs/architecture.md)
+- [RESTful API Specification](file:///docs/api.md)
+- [Machine Learning & Chemometrics Pipeline](file:///docs/ml-pipeline.md)
+- [Hardware Abstraction Layer (HAL)](file:///docs/hardware.md)
+- [Dairy Nutrition & Advisory Decision Rules](file:///docs/dairy-advisory.md)
+- [Dataset Provenance & Calibration Boundaries](file:///docs/dataset.md)
+- [Security, RBAC & Cryptographic Integrity](file:///docs/security.md)
+- [Implementation Status & Verification Report](file:///docs/implementation-status.md)

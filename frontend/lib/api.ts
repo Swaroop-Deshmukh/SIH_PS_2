@@ -192,3 +192,68 @@ export const preprocessSpectrum = (spectrum: number[]) =>
     method: "POST",
     body: JSON.stringify({ spectrum }),
   });
+
+// ── Batch History & Retrieval ──────────────────────────────────────────────
+export const listBatches = (limit: number = 50) => request<BatchAnalyzeResponse[]>(`/batches?limit=${limit}`);
+export const getBatchById = (batchId: string) => request<BatchAnalyzeResponse>(`/batches/${encodeURIComponent(batchId)}`);
+
+// ── Smart Feed Zone Node ───────────────────────────────────────────────────
+export interface FeedZoneData {
+  zone_id: string;
+  feed_type: string;
+  scenario: string;
+  timestamp: string;
+  data_badge: string;
+  temperature_celsius: number;
+  humidity_pct: number;
+  feed_remaining_kg: number;
+  exposure_hours: number;
+  battery_pct: number;
+  risk_status: "STABLE" | "WATCH" | "INSPECT" | "CRITICAL";
+  risk_label: string;
+  trend: Array<{ hour_offset: number; timestamp: string; temperature_celsius: number; humidity_pct: number; feed_remaining_kg: number }>;
+  recent_events: Array<{ timestamp: string; event_type: string; description: string }>;
+  advisory: { severity: string; title: string; message: string };
+  thresholds: { temp_critical_c: number; humidity_critical_pct: number; max_safe_exposure_h: number };
+  hardware_spec: { mcu: string; sensors: string; communication: string; battery_type: string; target_cost_inr: number };
+}
+
+export const getFeedZone = (zoneId: string = "ZONE-01", scenario: string = "healthy", feedType: string = "Maize Silage") =>
+  request<FeedZoneData>(`/feed-zone?zone_id=${encodeURIComponent(zoneId)}&scenario=${encodeURIComponent(scenario)}&feed_type=${encodeURIComponent(feedType)}`);
+
+export const calibrateFeedZone = (zoneId: string = "ZONE-01") =>
+  request<any>(`/feed-zone/calibrate?zone_id=${encodeURIComponent(zoneId)}`, { method: "POST" });
+
+// ── Authentication & Roles ────────────────────────────────────────────────
+export interface AuthUser {
+  user_id: string;
+  username: string;
+  full_name: string;
+  role: string;
+  organization: string;
+  phone: string;
+  role_info?: { name: string; description: string; permissions: string[] };
+}
+
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
+  user: AuthUser;
+  roles: Record<string, { name: string; description: string; permissions: string[] }>;
+}
+
+export const loginUser = (username: string, password: string) =>
+  request<AuthResponse>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ username, password }),
+  });
+
+export const getCurrentUser = (token?: string) =>
+  request<{ user: AuthUser; roles: any }>("/auth/me", {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+// ── Hardware & Diagnostics ─────────────────────────────────────────────────
+export const getHardwareDevices = () => request<any[]>("/hardware/devices");
+export const getHardwareDiagnostics = () => request<any>("/hardware/diagnostics");
+export const getModelComparison = () => request<any>("/chemometrics/comparison-models");

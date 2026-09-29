@@ -43,3 +43,6 @@ backend/.data/
 backend/.packages/
 backend/vendor/
 backend/.venv/
+
+# Local Netlify folder
+.netlify

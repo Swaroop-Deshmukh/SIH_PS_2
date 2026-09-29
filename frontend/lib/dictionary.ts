@@ -34,7 +34,13 @@ export const dictionary = {
     offlineNotice: "OFFLINE READY • Data stored locally",
     scenariosLabel: "Demo controls (simulation only)",
     nav: { overview: "Overview", dashboard: "Farm summary", testing: "Test feed", silage: "Storage check", ration: "Feed plan", twin: "Batch record", more: "More sections", language: "Language" },
-    demo: { intro: "This is a software demonstration. Readings are simulated; no feed was physically tested.", chooseScenario: "Choose a demo example", healthy: "Usual sample", heterogeneous: "Mixed sample · retest", ood: "Unusual sample · result withheld", storage_warning: "Possible storage issue", adulteration: "Possible foreign material", explanation: "These buttons switch example scenarios. They do not test your feed.", testing: "Testing a feed sample", feedPrompt: "Which feed do you want to check?", nextSteps: "What you can do", profileAction: "Update farm and feed details", rationAction: "Review the feed plan", storageAction: "Check storage example", batchAction: "View batch record", save: "Save details", saved: "Saved", farmSummary: "Your farm", latestResult: "Latest example result", resultDetails: "See result details", noLiveData: "Example only · no sensor or laboratory result" }
+    demo: { intro: "This is a software demonstration. Readings are simulated; no feed was physically tested.", chooseScenario: "Choose a demo example", healthy: "Usual sample", heterogeneous: "Mixed sample · retest", ood: "Unusual sample · result withheld", storage_warning: "Possible storage issue", adulteration: "Possible foreign material", explanation: "These buttons switch example scenarios. They do not test your feed.", testing: "Testing a feed sample", feedPrompt: "Which feed do you want to check?", nextSteps: "What you can do", profileAction: "Update farm and feed details", rationAction: "Review the feed plan", storageAction: "Check storage example", batchAction: "View batch record", save: "Save details", saved: "Saved", farmSummary: "Your farm", latestResult: "Latest example result", resultDetails: "See result details", noLiveData: "Example only · no sensor or laboratory result" },
+    stages: {
+      early_lactation: "Early Lactation (0-100 days)",
+      mid_lactation: "Mid Lactation (101-200 days)",
+      late_lactation: "Late Lactation (201+ days)",
+      dry_period: "Dry Period (Non-lactating)"
+    }
   },
   hi: {
     appName: "फ़ीडश्योर 360",
@@ -69,7 +75,13 @@ export const dictionary = {
     offlineNotice: "ऑफ़लाइन तैयार • डेटा स्थानीय रूप से सुरक्षित",
     scenariosLabel: "डेमो नियंत्रण (केवल सिमुलेशन)",
     nav: { overview: "अवलोकन", dashboard: "खेत का सारांश", testing: "चारे की जाँच", silage: "भंडारण जाँच", ration: "पशु आहार", twin: "बैच रिकॉर्ड", more: "अन्य विकल्प", language: "भाषा" },
-    demo: { intro: "यह सॉफ़्टवेयर प्रदर्शन है। सभी रीडिंग नकली हैं; चारे की वास्तविक जाँच नहीं हुई है।", chooseScenario: "डेमो उदाहरण चुनें", healthy: "सामान्य नमूना", heterogeneous: "मिला-जुला नमूना · दोबारा जाँचें", ood: "असामान्य नमूना · नतीजा रोका", storage_warning: "भंडारण की संभावित समस्या", adulteration: "बाहरी पदार्थ की संभावना", explanation: "ये बटन केवल डेमो उदाहरण बदलते हैं। ये आपके चारे की जाँच नहीं करते।", testing: "चारे के नमूने की जाँच", feedPrompt: "किस चारे की जानकारी चाहिए?", nextSteps: "आगे क्या करें", profileAction: "खेत और चारे की जानकारी बदलें", rationAction: "पशु आहार योजना देखें", storageAction: "भंडारण का डेमो देखें", batchAction: "बैच रिकॉर्ड देखें", save: "जानकारी सहेजें", saved: "सहेजा गया", farmSummary: "आपका खेत", latestResult: "ताज़ा डेमो नतीजा", resultDetails: "नतीजे की जानकारी देखें", noLiveData: "केवल उदाहरण · सेंसर या लैब की रिपोर्ट नहीं" }
+    demo: { intro: "यह सॉफ़्टवेयर प्रदर्शन है। सभी रीडिंग नकली हैं; चारे की वास्तविक जाँच नहीं हुई है।", chooseScenario: "डेमो उदाहरण चुनें", healthy: "सामान्य नमूना", heterogeneous: "मिला-जुला नमूना · दोबारा जाँचें", ood: "असामान्य नमूना · नतीजा रोका", storage_warning: "भंडारण की संभावित समस्या", adulteration: "बाहरी पदार्थ की संभावना", explanation: "ये बटन केवल डेमो उदाहरण बदलते हैं। ये आपके चारे की जाँच नहीं करते।", testing: "चारे के नमूने की जाँच", feedPrompt: "किस चारे की जानकारी चाहिए?", nextSteps: "आगे क्या करें", profileAction: "खेत और चारे की जानकारी बदलें", rationAction: "पशु आहार योजना देखें", storageAction: "भंडारण का डेमो देखें", batchAction: "बैच रिकॉर्ड देखें", save: "जानकारी सहेजें", saved: "सहेजा गया", farmSummary: "आपका खेत", latestResult: "ताज़ा डेमो नतीजा", resultDetails: "नतीजे की जानकारी देखें", noLiveData: "केवल उदाहरण · सेंसर या लैब की रिपोर्ट नहीं" },
+    stages: {
+      early_lactation: "प्रारंभिक दूध काल (0-100 दिन)",
+      mid_lactation: "मध्य दूध काल (101-200 दिन)",
+      late_lactation: "उत्तर दूध काल (201+ दिन)",
+      dry_period: "शुष्क काल (ड्राई अवधि)"
+    }
   },
   mr: {
     appName: "फीडश्युर ३६०",
@@ -104,6 +116,12 @@ export const dictionary = {
     offlineNotice: "ऑफलाइन तयार • डेटा सुरक्षित",
     scenariosLabel: "डेमो उदाहरण (फक्त सिम्युलेशन)",
     nav: { overview: "माहिती", dashboard: "शेताचा आढावा", testing: "चारा तपासा", silage: "साठवण तपासा", ration: "जनावरांचा आहार", twin: "बॅच नोंद", more: "इतर पर्याय", language: "भाषा" },
-    demo: { intro: "हे सॉफ्टवेअरचे प्रात्यक्षिक आहे. सर्व आकडे सिम्युलेटेड आहेत; चाऱ्याची प्रत्यक्ष तपासणी झालेली नाही.", chooseScenario: "डेमो उदाहरण निवडा", healthy: "नेहमीचा नमुना", heterogeneous: "मिश्र नमुना · पुन्हा तपासा", ood: "वेगळा नमुना · निकाल रोखला", storage_warning: "साठवणीची संभाव्य समस्या", adulteration: "बाहेरील पदार्थाची शक्यता", explanation: "ही बटणे फक्त डेमो उदाहरणे बदलतात. ती तुमचा चारा तपासत नाहीत.", testing: "चारा नमुना तपासा", feedPrompt: "कोणता चारा तपासायचा आहे?", nextSteps: "पुढे काय करू शकता", profileAction: "शेत आणि चाऱ्याची माहिती बदला", rationAction: "जनावरांचा आहार आराखडा पहा", storageAction: "साठवणीचे उदाहरण पहा", batchAction: "बॅच नोंद पहा", save: "माहिती जतन करा", saved: "जतन झाले", farmSummary: "तुमचे शेत", latestResult: "नवीनतम डेमो निकाल", resultDetails: "निकालाची माहिती पहा", noLiveData: "फक्त उदाहरण · सेन्सर किंवा प्रयोगशाळेचा निकाल नाही" }
+    demo: { intro: "हे सॉफ्टवेअरचे प्रात्यक्षिक आहे. सर्व आकडे सिम्युलेटेड आहेत; चाऱ्याची प्रत्यक्ष तपासणी झालेली नाही.", chooseScenario: "डेमो उदाहरण निवडा", healthy: "नेहमीचा नमुना", heterogeneous: "मिश्र नमुना · पुन्हा तपासा", ood: "वेगळा नमुना · निकाल रोखला", storage_warning: "साठवणीची संभाव्य समस्या", adulteration: "बाहेरील पदार्थाची शक्यता", explanation: "ही बटणे फक्त डेमो उदाहरणे बदलतात. ती तुमचा चारा तपासत नाहीत.", testing: "चारा नमुना तपासा", feedPrompt: "कोणता चारा तपासायचा आहे?", nextSteps: "पुढे काय करू शकता", profileAction: "शेत आणि चाऱ्याची माहिती बदला", rationAction: "जनावरांचा आहार आराखडा पहा", storageAction: "साठवणीचे उदाहरण पहा", batchAction: "बॅच नोंद पहा", save: "माहिती जतन करा", saved: "जतन झाले", farmSummary: "तुमचे शेत", latestResult: "नवीनतम डेमो निकाल", resultDetails: "निकालाची माहिती पहा", noLiveData: "फक्त उदाहरण · सेन्सर किंवा प्रयोगशाळेचा निकाल नाही" },
+    stages: {
+      early_lactation: "सुरुवातीचा दुग्धकाळ (०-१०० दिवस)",
+      mid_lactation: "मध्य दुग्धकाळ (१०१-२०० दिवस)",
+      late_lactation: "शेवटचा दुग्धकाळ (२०१+ दिवस)",
+      dry_period: "भाकड काळ (कोरडी मुदत)"
+    }
   }
 };

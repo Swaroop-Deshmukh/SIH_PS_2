@@ -60,6 +60,7 @@ class FarmProfile(BaseModel):
     dry_animals: int = Field(default=0, ge=0, le=100000)
     daily_milk_yield_liters: float = Field(default=0, ge=0, le=1000000)
     ration_group: str = "lactating"
+    lactation_stage: str = "early_lactation"
     data_source: str = "FARMER PROVIDED"
 
 

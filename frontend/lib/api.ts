@@ -3,7 +3,7 @@ export type ScenarioId = "healthy" | "heterogeneous" | "ood" | "storage_warning"
 export interface BasketItem { name: string; quantity_kg: number; cp_pct: number; dm_pct: number; data_source: string; }
 export interface FarmProfile {
   farm_name: string; location: string; lactating_animals: number; dry_animals: number;
-  daily_milk_yield_liters: number; ration_group: "lactating" | "dry"; data_source: string;
+  daily_milk_yield_liters: number; ration_group: "lactating" | "dry"; lactation_stage?: string; data_source: string;
 }
 export interface FarmContext { farm_profile: FarmProfile; feed_basket: BasketItem[]; updated_at?: string; }
 export interface BatchAnalyzeResponse {

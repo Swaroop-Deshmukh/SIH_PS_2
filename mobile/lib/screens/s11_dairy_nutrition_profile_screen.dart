@@ -15,6 +15,7 @@ class _S11DairyNutritionProfileScreenState extends State<S11DairyNutritionProfil
   int _animalCount = 10;
   int _milkYield = 12;
   String _selectedGroup = 'Lactating Cows';
+  String _lactationStage = 'early_lactation';
 
   @override
   Widget build(BuildContext context) {
@@ -107,6 +108,69 @@ class _S11DairyNutritionProfileScreenState extends State<S11DairyNutritionProfil
 
             const SizedBox(height: 12),
 
+            // Lactation Stage Selection Chips
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(LucideIcons.activity, size: 18, color: AppTheme.primaryColor),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Lactation Stage',
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Sets targeted nutrient requirements (DM% & CP%)',
+                    style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      {'key': 'early_lactation', 'label': 'Early (0-100d)'},
+                      {'key': 'mid_lactation', 'label': 'Mid (101-200d)'},
+                      {'key': 'late_lactation', 'label': 'Late (201+d)'},
+                      {'key': 'dry_period', 'label': 'Dry Period'},
+                    ].map((stage) {
+                      final isSelected = _lactationStage == stage['key'];
+                      return ChoiceChip(
+                        label: Text(stage['label']!),
+                        selected: isSelected,
+                        onSelected: (sel) {
+                          if (sel) setState(() => _lactationStage = stage['key']!);
+                        },
+                        selectedColor: AppTheme.primaryColor,
+                        labelStyle: GoogleFonts.outfit(
+                          color: isSelected ? Colors.white : Colors.black87,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                        backgroundColor: Colors.grey.shade100,
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
             // Milk Yield Counter
             _buildCounterCard(
               title: 'Avg Milk Yield per Cow',
@@ -158,7 +222,13 @@ class _S11DairyNutritionProfileScreenState extends State<S11DairyNutritionProfil
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const S12RationAdvisoryScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => S12RationAdvisoryScreen(
+                        animalCount: _animalCount,
+                        milkYield: _milkYield.toDouble(),
+                        lactationStage: _lactationStage,
+                      ),
+                    ),
                   );
                 },
                 style: ElevatedButton.styleFrom(

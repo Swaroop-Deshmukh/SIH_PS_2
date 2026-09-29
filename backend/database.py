@@ -53,6 +53,34 @@ def initialize_database() -> None:
             stored_name TEXT NOT NULL, content_type TEXT NOT NULL, size_bytes INTEGER NOT NULL,
             created_at TEXT NOT NULL, analysis_json TEXT
         )""")
+        db.execute("""CREATE TABLE IF NOT EXISTS silage_telemetry (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            batch_id TEXT NOT NULL,
+            hour_offset INTEGER NOT NULL,
+            timestamp TEXT NOT NULL,
+            core_temp_c REAL NOT NULL,
+            ambient_temp_c REAL NOT NULL,
+            ph REAL NOT NULL,
+            humidity_pct REAL NOT NULL,
+            moisture_pct REAL NOT NULL,
+            feed_mass_kg REAL NOT NULL,
+            dT_dt REAL NOT NULL,
+            cumulative_heat_units REAL NOT NULL,
+            status TEXT NOT NULL,
+            data_json TEXT
+        )""")
+        db.execute("""CREATE TABLE IF NOT EXISTS digital_twin_events (
+            event_id TEXT PRIMARY KEY,
+            batch_id TEXT NOT NULL,
+            block_index INTEGER NOT NULL,
+            timestamp TEXT NOT NULL,
+            state TEXT NOT NULL,
+            action TEXT NOT NULL,
+            actor TEXT NOT NULL,
+            payload_json TEXT NOT NULL,
+            previous_hash TEXT NOT NULL,
+            block_hash TEXT NOT NULL
+        )""")
         try:
             db.execute("ALTER TABLE batch_images ADD COLUMN analysis_json TEXT")
         except sqlite3.OperationalError:
@@ -139,6 +167,119 @@ def list_batch_images(batch_id: str) -> list[dict[str, Any]]:
     return results
 
 
+def save_silage_telemetry_batch(batch_id: str, readings: list[dict[str, Any]]) -> None:
+    with connect() as db:
+        db.execute("DELETE FROM silage_telemetry WHERE batch_id=?", (batch_id,))
+        for r in readings:
+            db.execute(
+                """INSERT INTO silage_telemetry(
+                    batch_id, hour_offset, timestamp, core_temp_c, ambient_temp_c,
+                    ph, humidity_pct, moisture_pct, feed_mass_kg, dT_dt,
+                    cumulative_heat_units, status, data_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    batch_id,
+                    int(r.get("hour_offset", 0)),
+                    str(r.get("timestamp", "")),
+                    float(r.get("core_temp_c", 0.0)),
+                    float(r.get("ambient_temp_c", 0.0)),
+                    float(r.get("ph", 4.0)),
+                    float(r.get("humidity_pct", 70.0)),
+                    float(r.get("moisture_pct", 65.0)),
+                    float(r.get("feed_mass_kg", 5000.0)),
+                    float(r.get("dT_dt", 0.0)),
+                    float(r.get("cumulative_heat_units", 0.0)),
+                    str(r.get("status", "STABLE")),
+                    json.dumps(r),
+                ),
+            )
+
+
+def get_silage_telemetry_history(batch_id: str) -> list[dict[str, Any]]:
+    with connect() as db:
+        rows = db.execute(
+            "SELECT * FROM silage_telemetry WHERE batch_id=? ORDER BY hour_offset ASC",
+            (batch_id,)
+        ).fetchall()
+    results = []
+    for row in rows:
+        d = dict(row)
+        raw_json = d.get("data_json")
+        if raw_json:
+            parsed = json.loads(raw_json)
+            parsed["id"] = d["id"]
+            results.append(parsed)
+        else:
+            results.append(d)
+    return results
+
+
+def append_silage_telemetry_reading(batch_id: str, reading: dict[str, Any]) -> dict[str, Any]:
+    with connect() as db:
+        cursor = db.execute(
+            """INSERT INTO silage_telemetry(
+                batch_id, hour_offset, timestamp, core_temp_c, ambient_temp_c,
+                ph, humidity_pct, moisture_pct, feed_mass_kg, dT_dt,
+                cumulative_heat_units, status, data_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                batch_id,
+                int(reading.get("hour_offset", 0)),
+                str(reading.get("timestamp", "")),
+                float(reading.get("core_temp_c", 0.0)),
+                float(reading.get("ambient_temp_c", 0.0)),
+                float(reading.get("ph", 4.0)),
+                float(reading.get("humidity_pct", 70.0)),
+                float(reading.get("moisture_pct", 65.0)),
+                float(reading.get("feed_mass_kg", 5000.0)),
+                float(reading.get("dT_dt", 0.0)),
+                float(reading.get("cumulative_heat_units", 0.0)),
+                str(reading.get("status", "STABLE")),
+                json.dumps(reading),
+            ),
+        )
+        reading["id"] = cursor.lastrowid
+    return reading
+
+
+def save_digital_twin_event(event: dict[str, Any]) -> dict[str, Any]:
+    with connect() as db:
+        db.execute(
+            """INSERT OR REPLACE INTO digital_twin_events(
+                event_id, batch_id, block_index, timestamp, state,
+                action, actor, payload_json, previous_hash, block_hash
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                event["event_id"],
+                event["batch_id"],
+                int(event["block_index"]),
+                event["timestamp"],
+                event["state"],
+                event["action"],
+                event["actor"],
+                json.dumps(event.get("payload", {})),
+                event["previous_hash"],
+                event["block_hash"],
+            ),
+        )
+    return event
+
+
+def get_digital_twin_events(batch_id: str) -> list[dict[str, Any]]:
+    with connect() as db:
+        rows = db.execute(
+            "SELECT * FROM digital_twin_events WHERE batch_id=? ORDER BY block_index ASC",
+            (batch_id,)
+        ).fetchall()
+    events = []
+    for r in rows:
+        d = dict(r)
+        d["payload"] = json.loads(d["payload_json"]) if d.get("payload_json") else {}
+        events.append(d)
+    return events
+
+
 # Auto-initialize on load so tables always exist
 initialize_database()
+
 

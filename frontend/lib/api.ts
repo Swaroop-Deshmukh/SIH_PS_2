@@ -6,11 +6,63 @@ export interface FarmProfile {
   daily_milk_yield_liters: number; ration_group: "lactating" | "dry"; lactation_stage?: string; data_source: string;
 }
 export interface FarmContext { farm_profile: FarmProfile; feed_basket: BasketItem[]; updated_at?: string; }
+export interface SilageTelemetryReading {
+  hour_offset: number;
+  timestamp: string;
+  core_temp_c: number;
+  ambient_temp_c: number;
+  temp_delta_c: number;
+  ph: number;
+  humidity_pct: number;
+  moisture_pct: number;
+  feed_mass_kg: number;
+  dT_dt: number;
+  cumulative_heat_units: number;
+  status: string;
+}
+
+export interface StorageTelemetry {
+  ph: number;
+  temperature_celsius: number;
+  ambient_temp_c?: number;
+  temp_differential_c?: number;
+  humidity_pct: number;
+  moisture_pct: number;
+  feed_mass_kg?: number;
+  exposure_days: number;
+  spoilage_risk_index: number;
+  status: string;
+  status_color?: string;
+  status_label?: string;
+  telemetry_badge: string;
+  dT_dt?: number;
+  max_dT_dt?: number;
+  cumulative_heat_units?: number;
+  shelf_life_hours_remaining?: number;
+  advisory_message?: string;
+  recommended_action?: string;
+  recent_time_series?: SilageTelemetryReading[];
+}
+
+export interface LifecycleEvent {
+  event_id: string;
+  batch_id: string;
+  block_index: number;
+  timestamp: string;
+  state: string;
+  action: string;
+  actor: string;
+  payload: Record<string, any>;
+  previous_hash: string;
+  block_hash: string;
+  detail?: string;
+}
+
 export interface BatchAnalyzeResponse {
   batch_id: string; feed_type: string; scenario: string;
   nir_data: { wavelengths: number[]; points: Array<{ point_id: string; reflectance: number[] }>; scenario: string };
   cv_screening: { visual_anomaly_detected: boolean; anomaly_score: number; mould_risk_level: string; mould_coverage_pct: number; foreign_material_detected: boolean; texture_uniformity: number; color_consistency_score: number; screening_summary: string };
-  storage_telemetry: { ph: number; temperature_celsius: number; humidity_pct: number; moisture_pct: number; exposure_days: number; spoilage_risk_index: number; status: string; telemetry_badge: string };
+  storage_telemetry: StorageTelemetry;
   evidence: { evidence_score: number; evidence_level: string; trust_status: string; metrics: { spectral_quality: number; sample_consistency: number; calibration_fit: number; prediction_uncertainty: number; visual_agreement: number; ood_distance: number }; untrusted_reasons: string[]; recommendation: string };
   nutritional_analysis: {
     dry_matter_pct: number;
@@ -56,7 +108,30 @@ export interface BatchAnalyzeResponse {
   };
   dairy_ration: { herd_summary: { lactating_animals: number; dry_animals: number; total_herd: number }; ration_analysis: { tested_feed_cp_pct: number; basket_weighted_cp_pct: number; target_cp_pct: number; cp_gap_pct: number; cp_status: string; fiber_status: string; ration_group?: string; basis?: string }; dairy_interpretation: string };
   advisories: Array<{ id: string; severity: string; category: string; title: string; message: string; verification_required: boolean }>;
-  digital_twin: { batch_id: string; feed_type: string; scenario: string; integrity_hash: string; created_at: string; timeline: Array<{ step: string; title: string; timestamp: string; status: string; detail: string }>; passport: { title: string; passport_id: string; issued_at: string; model_version: string; verification_status: string; verification_badge: string } };
+  digital_twin: {
+    batch_id: string;
+    feed_type: string;
+    scenario: string;
+    current_state?: string;
+    integrity_hash: string;
+    created_at: string;
+    timeline: Array<{ step: string; title: string; timestamp: string; status: string; detail: string }>;
+    lifecycle_events?: LifecycleEvent[];
+    passport: {
+      title: string;
+      passport_id: string;
+      issued_at: string;
+      device_node?: string;
+      model_version: string;
+      current_lifecycle_state?: string;
+      genesis_hash?: string;
+      chain_tip_hash?: string;
+      total_lifecycle_blocks?: number;
+      standards_compliance?: string[];
+      verification_status: string;
+      verification_badge: string;
+    };
+  };
   farm_profile: FarmProfile; feed_basket: BasketItem[];
   data_provenance: { mode: string; measurement_source: string; nutrition_source: string; vision_source: string; evidence_source: string; storage_source: string; record_created_at: string };
 }
@@ -192,3 +267,83 @@ export const preprocessSpectrum = (spectrum: number[]) =>
     method: "POST",
     body: JSON.stringify({ spectrum }),
   });
+
+// Phase 5: Silage Longitudinal Telemetry & Digital Twin State Machine
+export interface SilageTelemetryResponse {
+  batch_id: string;
+  total_readings: number;
+  summary: StorageTelemetry;
+  time_series: SilageTelemetryReading[];
+  telemetry_badge: string;
+}
+
+export const getSilageTelemetry = (batchId: string) =>
+  request<SilageTelemetryResponse>(`/silage/telemetry/${encodeURIComponent(batchId)}`);
+
+export const simulateSilageHour = (
+  batchId: string,
+  triggerBreach: boolean = false,
+  customTempDelta?: number
+) =>
+  request<{
+    batch_id: string;
+    new_reading: SilageTelemetryReading;
+    summary: StorageTelemetry;
+    recent_time_series: SilageTelemetryReading[];
+    auto_transitioned: boolean;
+    transition_message?: string;
+  }>(`/silage/telemetry/${encodeURIComponent(batchId)}/simulate-hour`, {
+    method: "POST",
+    body: JSON.stringify({ trigger_breach: triggerBreach, custom_temp_delta: customTempDelta }),
+  });
+
+export const resetSilageTelemetry = (batchId: string, scenario: string = "healthy") =>
+  request<{
+    batch_id: string;
+    message: string;
+    summary: StorageTelemetry;
+    recent_time_series: SilageTelemetryReading[];
+  }>(`/silage/telemetry/${encodeURIComponent(batchId)}/reset?scenario=${encodeURIComponent(scenario)}`, {
+    method: "POST",
+  });
+
+export interface DigitalTwinLedgerResponse {
+  batch_id: string;
+  verification: {
+    is_valid: boolean;
+    total_blocks: number;
+    genesis_hash?: string;
+    latest_block_hash?: string;
+    chain_algorithm?: string;
+    verified_at?: string;
+    error?: string;
+    broken_at_block?: number;
+  };
+  events: LifecycleEvent[];
+  available_states: string[];
+}
+
+export const getDigitalTwinLedger = (batchId: string) =>
+  request<DigitalTwinLedgerResponse>(`/digital-twin/${encodeURIComponent(batchId)}/ledger`);
+
+export const transitionDigitalTwin = (
+  batchId: string,
+  targetState: string,
+  action: string = "MANUAL_STATUS_ADVANCEMENT",
+  actor: string = "FARM_MANAGER",
+  notes?: string
+) =>
+  request<{
+    batch_id: string;
+    current_state: string;
+    transitioned_event: LifecycleEvent;
+    chain_verification: any;
+    message: string;
+  }>(`/digital-twin/${encodeURIComponent(batchId)}/transition`, {
+    method: "POST",
+    body: JSON.stringify({ target_state: targetState, action, actor, notes }),
+  });
+
+export const getDigitalTwinPassport = (batchId: string) =>
+  request<any>(`/digital-twin/${encodeURIComponent(batchId)}/passport`);
+

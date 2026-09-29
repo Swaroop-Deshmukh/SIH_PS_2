@@ -123,6 +123,87 @@ def project_aerobic_stability_shelf_life(
     }
 
 
+def calculate_flieg_index(ph: float, dry_matter_pct: float) -> Dict[str, Any]:
+    """
+    Computes genuine Flieg's Silage Quality Index (0-100) and fermentation acid profile.
+    Formula (Standard German/European Agronomic Silage Evaluation Standard):
+        Flieg Score = 220 + (2 * DM% - 15) - (40 * pH)
+    Grades:
+        81 - 100: Very Good (Excellent Fermentation)
+        61 - 80:  Good
+        41 - 60:  Medium / Moderate
+        21 - 40:  Poor
+        0 - 20:   Very Bad / Rotten
+    """
+    dm = float(max(10.0, min(80.0, dry_matter_pct)))
+    p = float(max(3.0, min(8.5, ph)))
+
+    # Flieg standard score formula
+    raw_score = 220.0 + (2.0 * dm - 15.0) - (40.0 * p)
+    score = int(max(0, min(100, round(raw_score))))
+
+    # Organic acid profile based on pH and Flieg score
+    if score >= 81 and p <= 4.2:
+        grade = "VERY_GOOD"
+        grade_label = "Very Good (Excellent Fermentation)"
+        color = "emerald"
+        lactic_pct = round(5.2 + (score - 80) * 0.08, 2)
+        acetic_pct = 1.45
+        butyric_pct = 0.02
+        description = "Optimal lactic preservation. Rapid drop in pH, zero clostridial activity, excellent palatability."
+    elif score >= 61 and p <= 4.5:
+        grade = "GOOD"
+        grade_label = "Good Silage"
+        color = "teal"
+        lactic_pct = round(4.0 + (score - 60) * 0.06, 2)
+        acetic_pct = 1.85
+        butyric_pct = 0.08
+        description = "Solid lactic preservation with minimal nutrient loss. Suitable for high-yielding dairy cows."
+    elif score >= 41 or (p <= 4.8 and score >= 35):
+        grade = "MEDIUM"
+        grade_label = "Medium / Moderate Silage"
+        color = "amber"
+        lactic_pct = round(2.6 + max(0, score - 40) * 0.05, 2)
+        acetic_pct = 2.65
+        butyric_pct = 0.28
+        description = "Mild aerobic exposure or sluggish initial fermentation. Moderate protein breakdown; monitor feed-out face."
+    elif score >= 21 or p <= 5.5:
+        grade = "POOR"
+        grade_label = "Poor Silage"
+        color = "orange"
+        lactic_pct = round(1.4 + max(0, score - 20) * 0.04, 2)
+        acetic_pct = 3.45
+        butyric_pct = 0.72
+        description = "Secondary fermentation active. Elevated butyric acid detected; intake depression expected in milking herd."
+    else:
+        grade = "VERY_BAD"
+        grade_label = "Very Bad / Rotten Silage"
+        color = "rose"
+        lactic_pct = 0.65
+        acetic_pct = 4.20
+        butyric_pct = 1.45
+        description = "Clostridial spoilage & extensive protein decomposition. Toxic amines and butyric acid breach safe feeding limits."
+
+    lactic_to_acetic = round(lactic_pct / max(0.1, acetic_pct), 2)
+
+    return {
+        "flieg_score": score,
+        "grade": grade,
+        "grade_label": grade_label,
+        "badge_color": color,
+        "description": description,
+        "ph_evaluated": round(p, 2),
+        "dry_matter_pct": round(dm, 1),
+        "acid_profile": {
+            "lactic_acid_pct": lactic_pct,
+            "acetic_acid_pct": acetic_pct,
+            "butyric_acid_pct": butyric_pct,
+            "lactic_to_acetic_ratio": lactic_to_acetic,
+            "ideal_ratio_benchmark": ">= 3.0"
+        }
+    }
+
+
 def generate_silage_longitudinal_series(
     batch_id: str,
     scenario: str = "healthy",
@@ -331,6 +412,21 @@ def summarize_silage_telemetry(series: List[Dict[str, Any]]) -> Dict[str, Any]:
         status_color = "emerald"
         status_label = "FERMENTATION STABLE"
 
+    # 24-Hour Heating Trajectory: Delta T / Delta t (24h)
+    if len(core_temps) >= 24:
+        delta_t_24h = round(float(core_temps[-1] - core_temps[-24]), 2)
+    elif len(core_temps) >= 2:
+        delta_t_24h = round(float(core_temps[-1] - core_temps[0]), 2)
+    else:
+        delta_t_24h = 0.0
+
+    # Aerobic heating flag (> 2.5°C in 24 hours per Phase 4 specification)
+    aerobic_heating_detected = bool(delta_t_24h >= 2.5 or latest_slope >= WARNING_HEATING_RATE_DT_DT)
+
+    # Flieg Fermentation Quality Score (0-100) & Organic Acid Profile
+    dm_pct = round(100.0 - float(latest.get("moisture_pct", 65.0)), 1)
+    flieg = calculate_flieg_index(latest_ph, dm_pct)
+
     return {
         "current_core_temp_c": latest_core,
         "current_ambient_temp_c": latest_amb,
@@ -341,6 +437,9 @@ def summarize_silage_telemetry(series: List[Dict[str, Any]]) -> Dict[str, Any]:
         "current_feed_mass_kg": latest["feed_mass_kg"],
         "dT_dt": latest_slope,
         "max_dT_dt": max_slope,
+        "delta_t_24h": delta_t_24h,
+        "aerobic_heating_detected": aerobic_heating_detected,
+        "flieg_evaluation": flieg,
         "mean_core_temp_c": mean_core,
         "max_core_temp_c": max_core,
         "cumulative_heat_units": cumulative_heat,

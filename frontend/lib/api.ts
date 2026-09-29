@@ -21,6 +21,25 @@ export interface SilageTelemetryReading {
   status: string;
 }
 
+export interface FliegAcidProfile {
+  lactic_acid_pct: number;
+  acetic_acid_pct: number;
+  butyric_acid_pct: number;
+  lactic_to_acetic_ratio: number;
+  ideal_ratio_benchmark: string;
+}
+
+export interface FliegEvaluation {
+  flieg_score: number;
+  grade: string;
+  grade_label: string;
+  badge_color: string;
+  description: string;
+  ph_evaluated: number;
+  dry_matter_pct: number;
+  acid_profile: FliegAcidProfile;
+}
+
 export interface StorageTelemetry {
   ph: number;
   temperature_celsius: number;
@@ -37,6 +56,9 @@ export interface StorageTelemetry {
   telemetry_badge: string;
   dT_dt?: number;
   max_dT_dt?: number;
+  delta_t_24h?: number;
+  aerobic_heating_detected?: boolean;
+  flieg_evaluation?: FliegEvaluation;
   cumulative_heat_units?: number;
   shelf_life_hours_remaining?: number;
   advisory_message?: string;
@@ -428,5 +450,12 @@ export const getSpatialNutritionMap = (payload: {
     method: "POST",
     body: JSON.stringify(payload),
   });
+
+export const getFliegIndex = (ph: number, dryMatterPct: number) =>
+  request<FliegEvaluation>("/silage/flieg-index", {
+    method: "POST",
+    body: JSON.stringify({ ph, dry_matter_pct: dryMatterPct }),
+  });
+
 
 

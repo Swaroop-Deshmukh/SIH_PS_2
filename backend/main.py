@@ -24,7 +24,8 @@ from services.digital_twin import (
     verify_cryptographic_ledger, LIFECYCLE_STATES
 )
 from services.silage_analytics import (
-    generate_silage_longitudinal_series, simulate_step_forward, summarize_silage_telemetry
+    generate_silage_longitudinal_series, simulate_step_forward, summarize_silage_telemetry,
+    calculate_flieg_index
 )
 from services.vision import analyze_feed_surface, analyze_urea_strip, get_vision_model_metrics
 from services.chemometrics import get_chemometrics_engine
@@ -105,6 +106,11 @@ class SpatialMapRequest(BaseModel):
     cv_data: dict[str, Any] | None = None
     storage_data: dict[str, Any] | None = None
     scenario: str = "healthy"
+
+
+class FliegIndexRequest(BaseModel):
+    ph: float = Field(default=4.0, ge=3.0, le=8.5)
+    dry_matter_pct: float = Field(default=35.0, ge=10.0, le=80.0)
 
 
 class SilageStepRequest(BaseModel):
@@ -196,6 +202,9 @@ def analyze_batch(req: BatchAnalyzeRequest) -> dict[str, Any]:
         "telemetry_badge": silage_summary["telemetry_badge"],
         "dT_dt": silage_summary["dT_dt"],
         "max_dT_dt": silage_summary["max_dT_dt"],
+        "delta_t_24h": silage_summary.get("delta_t_24h", 0.0),
+        "aerobic_heating_detected": silage_summary.get("aerobic_heating_detected", False),
+        "flieg_evaluation": silage_summary.get("flieg_evaluation", {}),
         "cumulative_heat_units": silage_summary["cumulative_heat_units"],
         "shelf_life_hours_remaining": silage_summary["shelf_life_hours_remaining"],
         "advisory_message": silage_summary["advisory_message"],
@@ -610,6 +619,15 @@ def reset_silage_telemetry(batch_id: str, scenario: str = "healthy") -> dict[str
         "summary": generated["summary"],
         "recent_time_series": generated["time_series"][-48:]
     }
+
+
+@app.post("/api/silage/flieg-index")
+def compute_flieg_index(req: FliegIndexRequest) -> dict[str, Any]:
+    """
+    Computes genuine Flieg's Silage Quality Index (0-100) and acid profile
+    from pH and Dry Matter % under international agronomic standards.
+    """
+    return calculate_flieg_index(req.ph, req.dry_matter_pct)
 
 
 @app.get("/api/digital-twin/{batch_id}/ledger")

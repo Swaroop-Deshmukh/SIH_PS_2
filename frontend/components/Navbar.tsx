@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Globe, UserCheck } from 'lucide-react';
+import { Globe, UserCheck, Trophy } from 'lucide-react';
 import { dictionary, Language } from '../lib/dictionary';
 
 interface NavbarProps {
@@ -23,15 +23,27 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const t = dictionary[lang];
 
+  const navItems = [
+    { id: 'landing', label: t.nav.overview, activeMatch: ['landing'] },
+    { id: 'dashboard', label: t.nav.dashboard, activeMatch: ['dashboard'] },
+    { id: 'feed-type', label: 'Feed Matrix', activeMatch: ['feed-type'] },
+    { id: 'nir-scan', label: 'NIR Scan', activeMatch: ['nir-scan', 'testing'] },
+    { id: 'evidence', label: 'Evidence', activeMatch: ['evidence'] },
+    { id: 'nutrition', label: 'Nutrition', activeMatch: ['nutrition'] },
+    { id: 'camera', label: 'Camera & Urea', activeMatch: ['camera'] },
+    { id: 'ration', label: t.nav.ration, activeMatch: ['ration'] },
+    { id: 'passport', label: 'Passport & IoT', activeMatch: ['passport', 'silage', 'twin'] }
+  ];
+
   return (
-    <header className="sticky top-0 z-50 bg-[#1b4332]/95 backdrop-blur-md text-white border-b border-[#2d6a4f] shadow-md">
+    <header className="sticky top-0 z-50 bg-[#1b4332]/95 backdrop-blur-md text-white border-b border-[#2d6a4f] shadow-md no-print">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           
           {/* Logo & Branding */}
           <div 
             onClick={() => setActiveTab('landing')}
-            className="flex items-center space-x-3 cursor-pointer group"
+            className="flex items-center space-x-3 cursor-pointer group shrink-0"
           >
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#52b788] to-[#74c69d] flex items-center justify-center text-[#1b4332] font-black text-xl shadow-inner group-hover:scale-105 transition-transform">
               360
@@ -47,27 +59,23 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           {/* Nav Items */}
-          <nav className="hidden md:flex space-x-1 lg:space-x-2 text-sm font-medium">
-            {[
-              { id: 'landing', label: t.nav.overview },
-              { id: 'dashboard', label: t.nav.dashboard },
-              { id: 'testing', label: t.nav.testing },
-              { id: 'silage', label: t.nav.silage },
-              { id: 'ration', label: t.nav.ration },
-              { id: 'twin', label: t.nav.twin }
-            ].map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`px-3 py-2 rounded-lg transition-colors ${
-                  activeTab === item.id
-                    ? 'bg-[#2d6a4f] text-[#74c69d] font-semibold border border-[#40916c]/40'
-                    : 'text-gray-200 hover:text-white hover:bg-[#2d6a4f]/50'
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
+          <nav className="hidden lg:flex space-x-1 text-xs font-medium overflow-x-auto py-1">
+            {navItems.map((item) => {
+              const isItemActive = item.activeMatch.includes(activeTab);
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
+                    isItemActive
+                      ? 'bg-[#2d6a4f] text-[#74c69d] font-bold border border-[#40916c]/40'
+                      : 'text-gray-200 hover:text-white hover:bg-[#2d6a4f]/50'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
           </nav>
 
           {/* Right Controls: Language & Farmer/Expert Mode */}

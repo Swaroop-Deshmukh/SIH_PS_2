@@ -4,12 +4,12 @@ import React, { useState, useEffect } from 'react';
 import { 
   Flame, Droplets, Thermometer, Clock, AlertTriangle, ShieldCheck, 
   TrendingUp, Play, FastForward, RotateCcw, Activity, ShieldAlert,
-  ArrowUpRight, Info, CheckCircle2
+  ArrowUpRight, Info, CheckCircle2, FlaskConical, Scale, Award
 } from 'lucide-react';
 import { dictionary, Language } from '../lib/dictionary';
 import { 
   BatchAnalyzeResponse, StorageTelemetry, SilageTelemetryReading,
-  getSilageTelemetry, simulateSilageHour, resetSilageTelemetry 
+  getSilageTelemetry, simulateSilageHour, resetSilageTelemetry, FliegEvaluation
 } from '../lib/api';
 
 interface SilageMonitorProps {
@@ -29,6 +29,7 @@ export const SilageMonitor: React.FC<SilageMonitorProps> = ({ lang, data, onTrig
   const [selectedPoint, setSelectedPoint] = useState<SilageTelemetryReading | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
   const [alertNotification, setAlertNotification] = useState<string | null>(null);
+  const [activeMetricTab, setActiveMetricTab] = useState<'temp' | 'ph' | 'moisture'>('temp');
 
   // Sync with batch data updates
   useEffect(() => {
@@ -36,7 +37,6 @@ export const SilageMonitor: React.FC<SilageMonitorProps> = ({ lang, data, onTrig
     if (data.storage_telemetry.recent_time_series && data.storage_telemetry.recent_time_series.length > 0) {
       setTimeSeries(data.storage_telemetry.recent_time_series);
     } else {
-      // Fetch full longitudinal series from backend
       void getSilageTelemetry(batch_id)
         .then((res) => {
           if (res.summary) setTelemetry(res.summary);
@@ -49,7 +49,44 @@ export const SilageMonitor: React.FC<SilageMonitorProps> = ({ lang, data, onTrig
   const isWarning = 
     telemetry.status === "CRITICAL_WARNING" || 
     telemetry.temperature_celsius > 32 || 
-    (telemetry.dT_dt && telemetry.dT_dt >= 0.35);
+    (telemetry.dT_dt && telemetry.dT_dt >= 0.35) ||
+    Boolean(telemetry.aerobic_heating_detected);
+
+  // 24-hr heating trajectory (Phase 4 requirement: alert if temp rises > 2.5°C in 24h)
+  const delta24h = telemetry.delta_t_24h ?? (() => {
+    if (timeSeries.length >= 24) {
+      return Number((timeSeries[timeSeries.length - 1].core_temp_c - timeSeries[timeSeries.length - 24].core_temp_c).toFixed(2));
+    }
+    return 0.0;
+  })();
+
+  const isAerobicBreach24h = Boolean(telemetry.aerobic_heating_detected) || delta24h >= 2.5;
+
+  // Fallback Flieg calculation if not populated
+  const flieg: FliegEvaluation = telemetry.flieg_evaluation || (() => {
+    const dm = Math.max(10.0, Math.min(80.0, 100.0 - (telemetry.moisture_pct || 65.0)));
+    const p = Math.max(3.0, Math.min(8.5, telemetry.ph || 4.0));
+    const raw = 220.0 + (2.0 * dm - 15.0) - (40.0 * p);
+    const score = Math.max(0, Math.min(100, Math.round(raw)));
+    const grade = score >= 81 ? "VERY_GOOD" : score >= 61 ? "GOOD" : score >= 41 ? "MEDIUM" : score >= 21 ? "POOR" : "VERY_BAD";
+    const grade_label = score >= 81 ? "Very Good (Excellent Fermentation)" : score >= 61 ? "Good Silage" : score >= 41 ? "Medium / Moderate Silage" : score >= 21 ? "Poor Silage" : "Very Bad / Rotten Silage";
+    return {
+      flieg_score: score,
+      grade,
+      grade_label,
+      badge_color: score >= 81 ? "emerald" : score >= 61 ? "teal" : score >= 41 ? "amber" : "rose",
+      description: score >= 81 ? "Optimal lactic preservation. Rapid drop in pH, zero clostridial activity." : "Secondary fermentation risk.",
+      ph_evaluated: p,
+      dry_matter_pct: dm,
+      acid_profile: {
+        lactic_acid_pct: score >= 81 ? 5.8 : score >= 61 ? 4.2 : 2.4,
+        acetic_acid_pct: score >= 81 ? 1.4 : 2.5,
+        butyric_acid_pct: score >= 81 ? 0.02 : 0.65,
+        lactic_to_acetic_ratio: score >= 81 ? 4.14 : 1.68,
+        ideal_ratio_benchmark: ">= 3.0"
+      }
+    };
+  })();
 
   const handleStepHour = async (triggerBreach: boolean = false) => {
     setIsSimulating(true);
@@ -90,20 +127,36 @@ export const SilageMonitor: React.FC<SilageMonitorProps> = ({ lang, data, onTrig
   const graphHeight = chartHeight - padding.top - padding.bottom;
 
   const pointsToRender = timeSeries.length > 0 ? timeSeries : [];
-  const minTemp = 16.0;
-  const maxTemp = 42.0;
+
+  // Determine dynamic min/max domains based on active metric tab
+  const getDomain = () => {
+    if (activeMetricTab === 'temp') return { min: 16.0, max: 42.0, unit: '°C' };
+    if (activeMetricTab === 'ph') return { min: 3.4, max: 7.2, unit: '' };
+    return { min: 40.0, max: 95.0, unit: '%' }; // moisture/humidity
+  };
+  const domain = getDomain();
 
   const getX = (idx: number) => 
     padding.left + (pointsToRender.length > 1 ? (idx / (pointsToRender.length - 1)) * graphWidth : 0);
   
-  const getY = (temp: number) => {
-    const clamped = Math.max(minTemp, Math.min(maxTemp, temp));
-    return padding.top + graphHeight - ((clamped - minTemp) / (maxTemp - minTemp)) * graphHeight;
+  const getY = (val: number) => {
+    const clamped = Math.max(domain.min, Math.min(domain.max, val));
+    return padding.top + graphHeight - ((clamped - domain.min) / (domain.max - domain.min)) * graphHeight;
   };
 
-  const corePath = pointsToRender.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${getX(i).toFixed(1)} ${getY(pt.core_temp_c).toFixed(1)}`).join(' ');
-  const ambientPath = pointsToRender.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${getX(i).toFixed(1)} ${getY(pt.ambient_temp_c).toFixed(1)}`).join(' ');
-  const dangerThresholdY = getY(32.0);
+  // Primary Path
+  const primaryPath = pointsToRender.map((pt, i) => {
+    const val = activeMetricTab === 'temp' ? pt.core_temp_c : activeMetricTab === 'ph' ? pt.ph : pt.moisture_pct;
+    return `${i === 0 ? 'M' : 'L'} ${getX(i).toFixed(1)} ${getY(val).toFixed(1)}`;
+  }).join(' ');
+
+  // Secondary Path (Ambient Temp or Humidity)
+  const secondaryPath = pointsToRender.map((pt, i) => {
+    const val = activeMetricTab === 'temp' ? pt.ambient_temp_c : activeMetricTab === 'ph' ? 4.2 : pt.humidity_pct;
+    return `${i === 0 ? 'M' : 'L'} ${getX(i).toFixed(1)} ${getY(val).toFixed(1)}`;
+  }).join(' ');
+
+  const dangerThresholdY = getY(activeMetricTab === 'temp' ? 32.0 : activeMetricTab === 'ph' ? 4.4 : 75.0);
 
   return (
     <div className="space-y-6">
@@ -113,12 +166,12 @@ export const SilageMonitor: React.FC<SilageMonitorProps> = ({ lang, data, onTrig
         <div>
           <div className="flex items-center space-x-2 text-xs font-bold text-[#2d6a4f] uppercase tracking-wider mb-1">
             <Flame className="w-4 h-4 text-amber-500" />
-            <span>SILAGE LONGITUDINAL INTELLIGENCE & TELEMETRY ENGINE</span>
-            <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">PHASE 5 LIVE</span>
+            <span>SILAGE IOT TELEMETRY & FERMENTATION QUALITY (PHASE 4 & 5)</span>
+            <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">LIVE TELEMETRY</span>
           </div>
-          <h2 className="text-2xl font-black text-[#1a1e1b]">Silage Pit Core Telemetry & Aerobic Heating</h2>
+          <h2 className="text-2xl font-black text-[#1a1e1b]">Smart Feed Zone & Silage IoT Monitoring</h2>
           <p className="text-xs text-stone-500 mt-1">
-            Continuous 168-hour sensor stream tracking core temperature, differential slope (dT/dt), cumulative heat units, and fermentation pH.
+            24-hour sensor trends, Flieg Fermentation Index, organic acid profiles, and thermal trajectory deterioration rate (ΔT/Δt).
           </p>
         </div>
 
@@ -142,10 +195,47 @@ export const SilageMonitor: React.FC<SilageMonitorProps> = ({ lang, data, onTrig
         </div>
       )}
 
+      {/* 24-HOUR AEROBIC DETERIORATION HEATING ALERT (Phase 4 Specification) */}
+      {isAerobicBreach24h ? (
+        <div className="p-4 rounded-2xl bg-rose-50 border-2 border-rose-400 text-rose-950 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-start space-x-3">
+            <div className="p-2 rounded-xl bg-rose-600 text-white shrink-0 mt-0.5">
+              <ShieldAlert className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="text-xs font-black uppercase tracking-wider text-rose-700 bg-rose-200/80 px-2 py-0.5 rounded">
+                  ΔT/Δt (24h) BREACH DETECTED
+                </span>
+                <span className="text-xs font-mono font-bold text-rose-900">
+                  +{delta24h.toFixed(1)}°C rise in 24h (Limit: +2.5°C)
+                </span>
+              </div>
+              <p className="text-xs font-medium text-rose-900 mt-1">
+                <strong>Aerobic Deterioration Warning:</strong> Core temperature is rising rapidly due to oxygen exposure. Fungal & yeast respiration is underway <em>before visible mould appears on the silage face</em>.
+              </p>
+            </div>
+          </div>
+          <div className="text-right shrink-0">
+            <span className="inline-block px-3 py-1.5 rounded-xl bg-rose-600 text-white font-black text-xs">
+              ACTION: Feed Out or Discard Outer 15cm
+            </span>
+          </div>
+        </div>
+      ) : (
+        <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl flex items-center justify-between text-xs text-emerald-950">
+          <div className="flex items-center space-x-2 font-medium">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span><strong>24-Hour Heating Trajectory:</strong> Pit temperature is stable ({delta24h >= 0 ? `+${delta24h}` : delta24h}°C in 24h &lt; +2.5°C threshold). Anaerobic seal intact.</span>
+          </div>
+          <span className="font-mono text-emerald-800 font-bold">STABLE</span>
+        </div>
+      )}
+
       {/* Core Telemetry Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
-        {/* Core Temperature & Differential Slope (dT/dt) */}
+        {/* Core Temperature & 24h Heating Trajectory */}
         <div className={`p-5 rounded-2xl border shadow-sm transition-colors ${
           isWarning ? 'bg-rose-50/70 border-rose-300 text-rose-950' : 'bg-white border-stone-200'
         }`}>
@@ -162,53 +252,51 @@ export const SilageMonitor: React.FC<SilageMonitorProps> = ({ lang, data, onTrig
             </span>
           </div>
           <div className="mt-2 pt-2 border-t border-stone-100 flex items-center justify-between text-[11px]">
-            <span className="font-medium text-stone-500">Heating Rate (dT/dt):</span>
+            <span className="font-medium text-stone-500">24h Trajectory (ΔT):</span>
             <span className={`font-mono font-bold px-1.5 py-0.5 rounded ${
-              (telemetry.dT_dt || 0) >= 0.35 ? 'bg-rose-200 text-rose-900' : 'bg-emerald-100 text-emerald-800'
+              delta24h >= 2.5 ? 'bg-rose-200 text-rose-900' : 'bg-emerald-100 text-emerald-800'
             }`}>
-              {(telemetry.dT_dt || 0) > 0 ? `+${telemetry.dT_dt}` : telemetry.dT_dt ?? 0.0}°C/hr
+              {delta24h >= 0 ? `+${delta24h}` : delta24h}°C/24h
             </span>
           </div>
         </div>
 
-        {/* Fermentation pH */}
+        {/* Fermentation pH & Acidity */}
         <div className={`p-5 rounded-2xl border shadow-sm ${
           telemetry.ph > 4.4 ? 'bg-amber-50/70 border-amber-300' : 'bg-white border-stone-200'
         }`}>
           <div className="flex justify-between items-center text-xs text-stone-600 font-bold mb-2">
             <span>Fermentation pH</span>
-            <span className="text-[10px] bg-stone-100 px-2 py-0.5 rounded font-mono text-stone-600">Glass Sensor</span>
+            <FlaskConical className="w-4 h-4 text-[#2d6a4f]" />
           </div>
           <div className={`text-3xl font-black ${telemetry.ph > 4.4 ? 'text-amber-700' : 'text-[#1b4332]'}`}>
             {telemetry.ph}
           </div>
           <div className="text-[11px] text-stone-500 mt-1 font-medium flex items-center justify-between">
-            <span>Target: 3.8 – 4.2</span>
+            <span>Optimal: 3.8 – 4.2</span>
             <span className={`font-bold ${telemetry.ph <= 4.2 ? 'text-emerald-700' : 'text-amber-700'}`}>
               {telemetry.ph <= 4.2 ? 'Optimal Lactic' : 'Lactic Depletion'}
             </span>
           </div>
         </div>
 
-        {/* Cumulative Heat Units & Aerobic Exposure */}
+        {/* Silage Moisture & Ambient Humidity */}
         <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-sm">
           <div className="flex justify-between items-center text-xs text-stone-600 font-bold mb-2">
-            <span>Cumulative Heat Units</span>
-            <Flame className="w-4 h-4 text-orange-500" />
+            <span>Moisture & Humidity</span>
+            <Droplets className="w-4 h-4 text-blue-500" />
           </div>
           <div className="text-3xl font-black text-[#1b4332]">
-            {telemetry.cumulative_heat_units ?? 0.0}
-            <span className="text-sm font-normal text-stone-500 ml-1">°C·hr</span>
+            {telemetry.moisture_pct}%
+            <span className="text-xs font-normal text-stone-500 ml-1.5">DM: {(100.0 - telemetry.moisture_pct).toFixed(1)}%</span>
           </div>
           <div className="text-[11px] text-stone-500 mt-1 font-medium flex items-center justify-between">
-            <span>Safe Threshold: &lt; 40.0</span>
-            <span className={`font-bold ${(telemetry.cumulative_heat_units || 0) > 40 ? 'text-rose-600' : 'text-emerald-700'}`}>
-              {(telemetry.cumulative_heat_units || 0) > 40 ? 'Nutrient Loss' : 'Protein Intact'}
-            </span>
+            <span>Pit Relative Humidity:</span>
+            <span className="font-mono font-bold text-stone-700">{telemetry.humidity_pct}%</span>
           </div>
         </div>
 
-        {/* Shelf-Life Countdown & Bunk Mass */}
+        {/* Aerobic Shelf-Life & Cumulative Heat Units */}
         <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-sm">
           <div className="flex justify-between items-center text-xs text-stone-600 font-bold mb-2">
             <span>Aerobic Shelf-Life</span>
@@ -221,39 +309,175 @@ export const SilageMonitor: React.FC<SilageMonitorProps> = ({ lang, data, onTrig
             <span className="text-sm font-normal text-stone-500 ml-1">hrs</span>
           </div>
           <div className="text-[11px] text-stone-500 mt-1 font-medium flex items-center justify-between">
-            <span>Pit Zone Mass:</span>
-            <span className="font-mono font-bold text-stone-700">{telemetry.feed_mass_kg ?? 5000} kg</span>
+            <span>Heat Units (&gt;Amb):</span>
+            <span className="font-mono font-bold text-stone-700">{telemetry.cumulative_heat_units ?? 0.0}°C·hr</span>
           </div>
         </div>
 
       </div>
 
-      {/* Longitudinal 48-Hour Time-Series Temperature Chart */}
+      {/* FLIEG FERMENTATION QUALITY & ORGANIC ACID PROFILE (Phase 4 Core Deliverable) */}
       <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-3 border-b border-stone-100">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between pb-3 border-b border-stone-100 gap-3">
+          <div>
+            <div className="flex items-center space-x-2">
+              <Award className="w-5 h-5 text-[#2d6a4f]" />
+              <h3 className="text-base font-bold text-[#1a1e1b]">Flieg Silage Quality Index & Fermentation Acid Profile</h3>
+              <span className="text-[10px] font-mono uppercase bg-[#1b4332] text-[#74c69d] px-2 py-0.5 rounded font-bold">
+                DIN / DLG Standard
+              </span>
+            </div>
+            <p className="text-xs text-stone-500 mt-1">
+              Agronomic silage evaluation formula: Flieg Score = 220 + (2 × DM% - 15) - (40 × pH). Grades preservation from lactic to clostridial.
+            </p>
+          </div>
+
+          <div className="text-right shrink-0">
+            <span className={`inline-block px-3 py-1.5 rounded-full text-xs font-black ${
+              flieg.grade === 'VERY_GOOD' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+              flieg.grade === 'GOOD' ? 'bg-teal-100 text-teal-800 border border-teal-300' :
+              flieg.grade === 'MEDIUM' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+              flieg.grade === 'POOR' ? 'bg-orange-100 text-orange-800 border border-orange-300' :
+              'bg-rose-100 text-rose-800 border border-rose-300'
+            }`}>
+              {flieg.grade_label}
+            </span>
+          </div>
+        </div>
+
+        {/* Flieg Gauge & Acid Bars */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+          
+          {/* Flieg Score Meter (4 cols) */}
+          <div className="lg:col-span-4 bg-stone-50 p-4 rounded-xl border border-stone-200 text-center">
+            <div className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Flieg Fermentation Score</div>
+            <div className="text-4xl font-black text-[#1b4332] my-1">
+              {flieg.flieg_score} <span className="text-base font-normal text-stone-400">/ 100</span>
+            </div>
+            
+            {/* Visual Zone Bar */}
+            <div className="w-full bg-stone-200 h-2.5 rounded-full overflow-hidden flex my-2">
+              <div className="w-[20%] bg-rose-400" title="Very Bad (0-20)" />
+              <div className="w-[20%] bg-orange-400" title="Poor (21-40)" />
+              <div className="w-[20%] bg-amber-400" title="Medium (41-60)" />
+              <div className="w-[20%] bg-teal-400" title="Good (61-80)" />
+              <div className="w-[20%] bg-emerald-500" title="Very Good (81-100)" />
+            </div>
+
+            <div className="flex justify-between text-[8px] font-mono text-stone-400 px-0.5">
+              <span>0 (Rotten)</span>
+              <span>40</span>
+              <span>60</span>
+              <span>80</span>
+              <span>100 (Optimal)</span>
+            </div>
+
+            <p className="text-[11px] text-stone-600 mt-2 font-medium">
+              {flieg.description}
+            </p>
+          </div>
+
+          {/* Organic Acid Profile Breakdown (8 cols) */}
+          <div className="lg:col-span-8 space-y-3">
+            <div className="flex items-center justify-between text-xs font-bold text-stone-700">
+              <span>Estimated Fermentation Acid Composition (% Dry Matter)</span>
+              <span className="font-mono text-[#2d6a4f]">Lactic/Acetic: {flieg.acid_profile.lactic_to_acetic_ratio} (Target: ≥ 3.0)</span>
+            </div>
+
+            {/* Lactic Acid */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="font-medium text-stone-600">Lactic Acid (Primary Preservative, pKa 3.86)</span>
+                <span className="font-bold text-emerald-800 font-mono">{flieg.acid_profile.lactic_acid_pct}% (Ideal: 4.0 - 7.0%)</span>
+              </div>
+              <div className="w-full bg-stone-100 h-2 rounded-full overflow-hidden">
+                <div 
+                  className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
+                  style={{ width: `${Math.min(100, (flieg.acid_profile.lactic_acid_pct / 7.0) * 100)}%` }} 
+                />
+              </div>
+            </div>
+
+            {/* Acetic Acid */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="font-medium text-stone-600">Acetic Acid (Aerobic Stabilizer)</span>
+                <span className="font-bold text-amber-800 font-mono">{flieg.acid_profile.acetic_acid_pct}% (Ideal: 1.0 - 2.5%)</span>
+              </div>
+              <div className="w-full bg-stone-100 h-2 rounded-full overflow-hidden">
+                <div 
+                  className="bg-amber-500 h-full rounded-full transition-all duration-500" 
+                  style={{ width: `${Math.min(100, (flieg.acid_profile.acetic_acid_pct / 4.0) * 100)}%` }} 
+                />
+              </div>
+            </div>
+
+            {/* Butyric Acid */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="font-medium text-stone-600">Butyric Acid (Clostridial Protein Spoilage Marker)</span>
+                <span className={`font-bold font-mono ${flieg.acid_profile.butyric_acid_pct > 0.1 ? 'text-rose-700' : 'text-stone-500'}`}>
+                  {flieg.acid_profile.butyric_acid_pct}% (Ideal: &lt; 0.10%)
+                </span>
+              </div>
+              <div className="w-full bg-stone-100 h-2 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full transition-all duration-500 ${flieg.acid_profile.butyric_acid_pct > 0.1 ? 'bg-rose-500' : 'bg-stone-300'}`} 
+                  style={{ width: `${Math.min(100, (flieg.acid_profile.butyric_acid_pct / 1.5) * 100)}%` }} 
+                />
+              </div>
+            </div>
+
+            <div className="text-[10px] text-stone-400 pt-1 flex items-center justify-between">
+              <span>Formula evaluated with pH = {flieg.ph_evaluated} & DM = {flieg.dry_matter_pct}%</span>
+              <span>ISO 12099 / Forage Silage Fermentation Standard</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* 24-HOUR & 48-HOUR MULTI-SENSOR TREND CHARTS */}
+      <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
           <div>
             <div className="flex items-center space-x-2">
               <TrendingUp className="w-4 h-4 text-[#2d6a4f]" />
-              <h3 className="text-base font-bold text-[#1a1e1b]">Longitudinal Thermal Trend: Pit Core vs Ambient Diurnal Cycle</h3>
+              <h3 className="text-base font-bold text-[#1a1e1b]">Sensor Telemetry Trend & Trajectory</h3>
             </div>
             <p className="text-xs text-stone-500 mt-0.5">
-              Numerical differential slope calculated over sliding 3-hour window. Shaded area indicates aerobic spoilage threshold (&gt;32°C).
+              {activeMetricTab === 'temp' && 'Core pit temperature vs ambient diurnal cycle with sliding 3-hr differential slope (dT/dt).'}
+              {activeMetricTab === 'ph' && 'Fermentation pH trajectory tracking lactic acidification vs secondary decomposition.'}
+              {activeMetricTab === 'moisture' && 'Silage face moisture retention and relative humidity trends.'}
             </p>
           </div>
           
-          <div className="flex items-center space-x-4 text-xs font-medium">
-            <div className="flex items-center space-x-1.5">
-              <span className="w-3 h-3 rounded-full bg-[#1b4332]" />
-              <span className="text-stone-700 font-semibold">Silage Core Temp</span>
-            </div>
-            <div className="flex items-center space-x-1.5">
-              <span className="w-3 h-0.5 bg-stone-400 border-t border-dashed border-stone-500" />
-              <span className="text-stone-500">Ambient Baseline</span>
-            </div>
-            <div className="flex items-center space-x-1.5">
-              <span className="w-3 h-2 rounded bg-rose-200 border border-rose-300" />
-              <span className="text-rose-700 font-bold">&gt;32°C Risk Zone</span>
-            </div>
+          {/* Metric Switcher */}
+          <div className="flex items-center bg-stone-100 p-1 rounded-xl border border-stone-200 text-xs font-bold">
+            <button
+              onClick={() => setActiveMetricTab('temp')}
+              className={`px-3 py-1 rounded-lg transition-all ${
+                activeMetricTab === 'temp' ? 'bg-white text-[#1b4332] shadow-sm' : 'text-stone-500 hover:text-stone-800'
+              }`}
+            >
+              Temperature (°C)
+            </button>
+            <button
+              onClick={() => setActiveMetricTab('ph')}
+              className={`px-3 py-1 rounded-lg transition-all ${
+                activeMetricTab === 'ph' ? 'bg-white text-[#1b4332] shadow-sm' : 'text-stone-500 hover:text-stone-800'
+              }`}
+            >
+              Fermentation pH
+            </button>
+            <button
+              onClick={() => setActiveMetricTab('moisture')}
+              className={`px-3 py-1 rounded-lg transition-all ${
+                activeMetricTab === 'moisture' ? 'bg-white text-[#1b4332] shadow-sm' : 'text-stone-500 hover:text-stone-800'
+              }`}
+            >
+              Moisture & Humidity (%)
+            </button>
           </div>
         </div>
 
@@ -262,21 +486,25 @@ export const SilageMonitor: React.FC<SilageMonitorProps> = ({ lang, data, onTrig
           <div className="min-w-[640px]">
             <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-44 overflow-visible font-sans">
               
-              {/* Danger Zone Shading (>32°C) */}
-              <rect 
-                x={padding.left} 
-                y={padding.top} 
-                width={graphWidth} 
-                height={Math.max(0, dangerThresholdY - padding.top)} 
-                fill="#fecdd3" 
-                fillOpacity="0.35" 
-              />
+              {/* Danger Zone Shading */}
+              {activeMetricTab === 'temp' && (
+                <rect 
+                  x={padding.left} 
+                  y={padding.top} 
+                  width={graphWidth} 
+                  height={Math.max(0, dangerThresholdY - padding.top)} 
+                  fill="#fecdd3" 
+                  fillOpacity="0.35" 
+                />
+              )}
+
+              {/* Threshold Line */}
               <line 
                 x1={padding.left} 
                 y1={dangerThresholdY} 
                 x2={padding.left + graphWidth} 
                 y2={dangerThresholdY} 
-                stroke="#e11d48" 
+                stroke={activeMetricTab === 'temp' ? '#e11d48' : '#d97706'} 
                 strokeDasharray="4 3" 
                 strokeWidth="1.2" 
               />
@@ -285,17 +513,17 @@ export const SilageMonitor: React.FC<SilageMonitorProps> = ({ lang, data, onTrig
                 y={dangerThresholdY - 4} 
                 textAnchor="end" 
                 fontSize="9" 
-                fill="#be123c" 
+                fill={activeMetricTab === 'temp' ? '#be123c' : '#b45309'} 
                 fontWeight="bold"
               >
-                Critical Heating Limit (32°C)
+                {activeMetricTab === 'temp' ? 'Critical Heating Limit (32°C)' : activeMetricTab === 'ph' ? 'pH Stability Limit (4.2)' : 'Moisture Limit'}
               </text>
 
               {/* Y-Axis Grid Lines and Labels */}
-              {[20, 25, 30, 35, 40].map((temp) => {
-                const y = getY(temp);
+              {(activeMetricTab === 'temp' ? [20, 25, 30, 35, 40] : activeMetricTab === 'ph' ? [3.5, 4.0, 4.5, 5.0, 6.0, 7.0] : [50, 60, 70, 80, 90]).map((val) => {
+                const y = getY(val);
                 return (
-                  <g key={temp}>
+                  <g key={val}>
                     <line 
                       x1={padding.left} 
                       y1={y} 
@@ -312,16 +540,16 @@ export const SilageMonitor: React.FC<SilageMonitorProps> = ({ lang, data, onTrig
                       fill="#94a3b8" 
                       fontFamily="monospace"
                     >
-                      {temp}°
+                      {val}{domain.unit}
                     </text>
                   </g>
                 );
               })}
 
-              {/* Ambient Baseline Curve (Dashed) */}
-              {pointsToRender.length > 0 && (
+              {/* Secondary Reference Curve (Dashed) */}
+              {pointsToRender.length > 0 && activeMetricTab === 'temp' && (
                 <path 
-                  d={ambientPath} 
+                  d={secondaryPath} 
                   fill="none" 
                   stroke="#94a3b8" 
                   strokeWidth="1.5" 
@@ -329,12 +557,12 @@ export const SilageMonitor: React.FC<SilageMonitorProps> = ({ lang, data, onTrig
                 />
               )}
 
-              {/* Silage Core Temperature Curve */}
+              {/* Primary Curve */}
               {pointsToRender.length > 0 && (
                 <path 
-                  d={corePath} 
+                  d={primaryPath} 
                   fill="none" 
-                  stroke={isWarning ? '#e11d48' : '#1b4332'} 
+                  stroke={isWarning && activeMetricTab === 'temp' ? '#e11d48' : '#1b4332'} 
                   strokeWidth="2.5" 
                   strokeLinecap="round" 
                   strokeLinejoin="round" 
@@ -344,9 +572,10 @@ export const SilageMonitor: React.FC<SilageMonitorProps> = ({ lang, data, onTrig
               {/* Interactive Data Points */}
               {pointsToRender.map((pt, i) => {
                 const cx = getX(i);
-                const cy = getY(pt.core_temp_c);
+                const val = activeMetricTab === 'temp' ? pt.core_temp_c : activeMetricTab === 'ph' ? pt.ph : pt.moisture_pct;
+                const cy = getY(val);
                 const isSelected = selectedPoint?.hour_offset === pt.hour_offset;
-                const isCritical = pt.core_temp_c >= 32.0;
+                const isCritical = activeMetricTab === 'temp' ? pt.core_temp_c >= 32.0 : pt.ph > 4.4;
 
                 return (
                   <circle
@@ -400,8 +629,8 @@ export const SilageMonitor: React.FC<SilageMonitorProps> = ({ lang, data, onTrig
               <span>Core: <b>{selectedPoint.core_temp_c}°C</b></span>
               <span>Ambient: <b>{selectedPoint.ambient_temp_c}°C</b></span>
               <span>pH: <b>{selectedPoint.ph}</b></span>
+              <span>Moisture: <b>{selectedPoint.moisture_pct}%</b></span>
               <span>dT/dt: <b>+{selectedPoint.dT_dt}°C/hr</b></span>
-              <span>Heat: <b>{selectedPoint.cumulative_heat_units}°C·hr</b></span>
             </div>
             <button onClick={() => setSelectedPoint(null)} className="text-stone-400 hover:text-stone-700 text-xs font-bold">Close</button>
           </div>

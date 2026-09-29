@@ -29,6 +29,7 @@ from services.silage_analytics import (
 from services.vision import analyze_feed_surface, analyze_urea_strip, get_vision_model_metrics
 from services.chemometrics import get_chemometrics_engine
 from services.preprocessing import preprocess_spectrum_suite
+from services.sampling import build_spatial_nutrition_map
 
 app = FastAPI(
     title="FeedSure 360 Intelligence API",
@@ -96,6 +97,14 @@ class ChemometricsPredictRequest(BaseModel):
 
 class ChemometricsPreprocessRequest(BaseModel):
     spectrum: list[float]
+
+
+class SpatialMapRequest(BaseModel):
+    nir_data: dict[str, Any]
+    nutrition_data: dict[str, Any]
+    cv_data: dict[str, Any] | None = None
+    storage_data: dict[str, Any] | None = None
+    scenario: str = "healthy"
 
 
 class SilageStepRequest(BaseModel):
@@ -210,6 +219,16 @@ def analyze_batch(req: BatchAnalyzeRequest) -> dict[str, Any]:
         })
     ration = evaluate_dairy_ration(nutrition, profile, ration_basket)
     advisories = generate_advisories(evidence, ration, storage_data)
+
+    # Phase 3: Dynamic 5-Point Sampling & Spatial Nutrition Map (ISO 12099 W/X Pattern)
+    spatial_sampling = build_spatial_nutrition_map(
+        nir_data=nir_data,
+        nutrition_data=nutrition,
+        cv_data=cv_data,
+        storage_data=storage_data,
+        scenario=req.scenario
+    )
+
     twin = create_digital_twin(batch_id, req.feed_type, evidence, nutrition, storage_data, req.scenario)
     for evt in twin.get("lifecycle_events", []):
         save_digital_twin_event(evt)
@@ -223,6 +242,7 @@ def analyze_batch(req: BatchAnalyzeRequest) -> dict[str, Any]:
         "storage_telemetry": storage_data,
         "evidence": evidence,
         "nutritional_analysis": nutrition,
+        "spatial_sampling": spatial_sampling,
         "dairy_ration": ration,
         "advisories": advisories,
         "digital_twin": twin,
@@ -231,6 +251,7 @@ def analyze_batch(req: BatchAnalyzeRequest) -> dict[str, Any]:
         "data_provenance": {
             "mode": "RESEARCH_GRADE_HYBRID",
             "measurement_source": "NIR Diffuse Reflectance 5-Point Scan (800nm - 1050nm)",
+            "sampling_source": "ISO 12099 Dynamic 5-Point W/X Spatial Grid with Coefficient of Variation (CV%) & Adaptive Test Escalation",
             "nutrition_source": "Chemometrics PLSR Multi-Target Model (ISO 12099 / ASTM E1655) with Mahalanobis Calibration OOD Gating",
             "vision_source": "Computer Vision 22-D Channel Moments + Laplacian Variance Texture Analyzer",
             "evidence_source": "Multi-Source Evidence Fusion (NIR Consistency, Calibration Fit, Visual Agreement)",
@@ -394,6 +415,21 @@ def chemometrics_model_metrics() -> dict[str, Any]:
     R2, RMSECV, SEP, RPD, PCA explained variance, and Mahalanobis distance thresholds.
     """
     return get_chemometrics_engine().get_metrics()
+
+
+@app.post("/api/sampling/spatial-map")
+def sampling_spatial_map(req: SpatialMapRequest) -> dict[str, Any]:
+    """
+    Computes genuine 3x3 spatial nutrition grid, heterogeneity CV%,
+    outlier core localization, and adaptive test escalation protocols.
+    """
+    return build_spatial_nutrition_map(
+        nir_data=req.nir_data,
+        nutrition_data=req.nutrition_data,
+        cv_data=req.cv_data,
+        storage_data=req.storage_data,
+        scenario=req.scenario
+    )
 
 
 @app.get("/api/batches/{batch_id}/images")

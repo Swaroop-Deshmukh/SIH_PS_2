@@ -58,11 +58,64 @@ export interface LifecycleEvent {
   detail?: string;
 }
 
+export interface SpatialGridCell {
+  row: number;
+  col: number;
+  position_name: string;
+  label: string;
+  is_sampled: boolean;
+  point_id: string | null;
+  dry_matter_pct: number | null;
+  moisture_pct: number | null;
+  crude_protein_pct: number | null;
+  ndf_pct: number | null;
+  adf_pct: number | null;
+  mahalanobis_distance: number | null;
+  is_anomalous: boolean;
+  is_ood: boolean;
+  status: string;
+  reflectance: number[];
+}
+
+export interface SpatialMetrics {
+  sample_points_count: number;
+  spectral_cv_pct: number;
+  moisture_cv_pct: number;
+  crude_protein_cv_pct: number;
+  max_cv_pct: number;
+  cv_threshold_pct: number;
+  is_heterogeneous: boolean;
+  heterogeneity_verdict: string;
+  anomalous_point_id: string | null;
+  anomalous_location: string | null;
+  mean_reflectance: number;
+  reflectance_std: number;
+}
+
+export interface AdaptiveEscalation {
+  escalation_code: string;
+  urgency: string;
+  badge_color: string;
+  title: string;
+  reason: string;
+  recommended_action: string;
+  target_point: string | null;
+  suggested_tool: string;
+  action_steps: string[];
+}
+
+export interface SpatialNutritionMap {
+  grid_3x3: SpatialGridCell[];
+  spatial_metrics: SpatialMetrics;
+  adaptive_escalation: AdaptiveEscalation;
+}
+
 export interface BatchAnalyzeResponse {
   batch_id: string; feed_type: string; scenario: string;
   nir_data: { wavelengths: number[]; points: Array<{ point_id: string; reflectance: number[] }>; scenario: string };
   cv_screening: { visual_anomaly_detected: boolean; anomaly_score: number; mould_risk_level: string; mould_coverage_pct: number; foreign_material_detected: boolean; texture_uniformity: number; color_consistency_score: number; screening_summary: string };
   storage_telemetry: StorageTelemetry;
+  spatial_sampling?: SpatialNutritionMap;
   evidence: { evidence_score: number; evidence_level: string; trust_status: string; metrics: { spectral_quality: number; sample_consistency: number; calibration_fit: number; prediction_uncertainty: number; visual_agreement: number; ood_distance: number }; untrusted_reasons: string[]; recommendation: string };
   nutritional_analysis: {
     dry_matter_pct: number;
@@ -106,7 +159,24 @@ export interface BatchAnalyzeResponse {
       pipeline_signature: string;
     };
   };
-  dairy_ration: { herd_summary: { lactating_animals: number; dry_animals: number; total_herd: number }; ration_analysis: { tested_feed_cp_pct: number; basket_weighted_cp_pct: number; target_cp_pct: number; cp_gap_pct: number; cp_status: string; fiber_status: string; ration_group?: string; basis?: string }; dairy_interpretation: string };
+  dairy_ration: {
+    herd_summary: { lactating_animals: number; dry_animals: number; total_herd: number };
+    ration_analysis: {
+      tested_feed_cp_pct: number;
+      basket_weighted_cp_pct: number;
+      target_cp_pct: number;
+      cp_gap_pct: number;
+      cp_status: string;
+      fiber_status: string;
+      ration_group?: string;
+      basis?: string;
+      stage_name?: string;
+      required_dm_total_kg?: number;
+      required_dmi_per_animal_kg?: number;
+      available_dm_total_kg?: number;
+    };
+    dairy_interpretation: string;
+  };
   advisories: Array<{ id: string; severity: string; category: string; title: string; message: string; verification_required: boolean }>;
   digital_twin: {
     batch_id: string;
@@ -346,4 +416,17 @@ export const transitionDigitalTwin = (
 
 export const getDigitalTwinPassport = (batchId: string) =>
   request<any>(`/digital-twin/${encodeURIComponent(batchId)}/passport`);
+
+export const getSpatialNutritionMap = (payload: {
+  nir_data: any;
+  nutrition_data: any;
+  cv_data?: any;
+  storage_data?: any;
+  scenario?: string;
+}) =>
+  request<SpatialNutritionMap>("/sampling/spatial-map", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
 

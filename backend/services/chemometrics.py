@@ -288,14 +288,14 @@ class ChemometricsEngine:
         anomalous_point_id = points[max_dev_idx].get("point_id", f"Sampling Point {max_dev_idx + 1}")
 
         is_heterogeneous = spectral_cv > 12.0
-        is_ood = mean_dist > 2.50 or any(p["is_ood"] for p in point_results)
+        is_ood = (mean_dist > 2.50 and not is_heterogeneous) or (any(p["is_ood"] for p in point_results) and not is_heterogeneous)
 
-        if is_ood:
-            badge = "OUT OF CALIBRATION DOMAIN — QUANTITATIVE PREDICTION NOT TRUSTED"
-            domain_status = "OUT_OF_DOMAIN"
-        elif is_heterogeneous:
+        if is_heterogeneous:
             badge = "CHEMOMETRICS PREDICTION — HETEROGENEOUS BATCH (RETEST RECOMMENDED)"
             domain_status = "HETEROGENEOUS"
+        elif is_ood:
+            badge = "OUT OF CALIBRATION DOMAIN — QUANTITATIVE PREDICTION NOT TRUSTED"
+            domain_status = "OUT_OF_DOMAIN"
         elif mean_dist > 2.0:
             badge = "CHEMOMETRICS PLSR MODEL (MARGINAL CALIBRATION DOMAIN)"
             domain_status = "MARGINAL"

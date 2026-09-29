@@ -668,7 +668,7 @@ export const SilageMonitor: React.FC<SilageMonitorProps> = ({ lang, data, onTrig
         </div>
       </div>
 
-      {/* Live Sensor Stream Simulation Control Station (For Hackathon Demonstration) */}
+      {/* Live Sensor Stream Simulation Control Station */}
       <div className="bg-stone-900 text-white p-6 rounded-2xl border border-stone-800 space-y-4 shadow-xl">
         <div className="flex items-center justify-between pb-3 border-b border-stone-800">
           <div className="flex items-center space-x-2">
@@ -715,7 +715,7 @@ export const SilageMonitor: React.FC<SilageMonitorProps> = ({ lang, data, onTrig
 
         {/* Preset Demo States */}
         <div className="pt-3 border-t border-stone-800/80 flex flex-wrap items-center gap-2 text-xs">
-          <span className="text-stone-400 font-semibold mr-1">Judge Scenario Presets:</span>
+          <span className="text-stone-400 font-semibold mr-1">Scenario Presets:</span>
           <button
             onClick={() => onTriggerAnomaly('healthy')}
             className="px-3 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-emerald-400 text-[11px] font-bold"

@@ -44,17 +44,15 @@ export const NutritionResultsPanel: React.FC<NutritionResultsPanelProps> = ({
       {/* Header Banner */}
       <div className="bg-white p-6 sm:p-8 rounded-3xl border border-stone-200 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center space-x-2 text-xs font-bold text-[#2d6a4f] uppercase tracking-wider mb-1">
-            <span className="bg-[#1b4332] text-[#74c69d] px-2.5 py-0.5 rounded-full font-mono text-[10px]">
-              SCREEN 5 OF 8
-            </span>
+          <div className="flex items-center space-x-2 text-xs font-bold text-[#1b4332] uppercase tracking-wider mb-1">
+            <Activity className="w-4 h-4 text-[#52b788]" />
             <span>CHEMOMETRICS NUTRITION PREDICTIONS</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-black text-stone-900">
+          <h2 className="text-2xl sm:text-3xl font-black text-stone-900 tracking-tight">
             Nutritional Chemistry &amp; Uncertainty Bounds
           </h2>
           <p className="text-xs sm:text-sm text-stone-500 mt-1 max-w-2xl">
-            Scikit-Learn Partial Least Squares Regression (PLSR, n=4) predictions 
+            Partial Least Squares Regression (PLSR, n=4) chemometric predictions 
             with dynamic 95% confidence intervals and Mahalanobis calibration domain gating.
           </p>
         </div>

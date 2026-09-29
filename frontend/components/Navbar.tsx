@@ -14,6 +14,35 @@ interface NavbarProps {
   setActiveTab: (t: string) => void;
 }
 
+export const CattleLogo: React.FC<{ className?: string }> = ({ className = "w-6 h-6" }) => (
+  <svg 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className={className}
+    aria-label="Cattle Logo"
+  >
+    {/* Curved Horns */}
+    <path d="M3.5 5.5C4.5 8 6.5 9.5 8.5 10" />
+    <path d="M20.5 5.5C19.5 8 17.5 9.5 15.5 10" />
+    {/* Ears */}
+    <path d="M2.5 11.5C3.5 10.5 6 11 6.5 12.5" />
+    <path d="M21.5 11.5C20.5 10.5 18 11 17.5 12.5" />
+    {/* Head Outline */}
+    <path d="M7 9.5H17C18.5 9.5 19 11 18.5 13.5C18 16 16.5 18 15 20C13.5 21 10.5 21 9 20C7.5 18 6 16 5.5 13.5C5 11 5.5 9.5 7 9.5Z" />
+    {/* Eyes */}
+    <circle cx="9" cy="13.5" r="1" fill="currentColor" />
+    <circle cx="15" cy="13.5" r="1" fill="currentColor" />
+    {/* Muzzle & Nostrils */}
+    <path d="M8.5 17C8.5 16 10 15.5 12 15.5C14 15.5 15.5 16 15.5 17C15.5 18.5 14 19.5 12 19.5C10 19.5 8.5 18.5 8.5 17Z" />
+    <circle cx="10.5" cy="17.5" r="0.6" fill="currentColor" />
+    <circle cx="13.5" cy="17.5" r="0.6" fill="currentColor" />
+  </svg>
+);
+
 export const Navbar: React.FC<NavbarProps> = ({
   lang,
   setLang,
@@ -51,21 +80,17 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header className="sticky top-0 z-50 bg-[#1b4332]/95 backdrop-blur-md text-white border-b border-[#2d6a4f] shadow-md no-print">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          
           {/* Logo & Branding */}
           <div 
             onClick={() => setActiveTab('landing')}
             className="flex items-center space-x-3 cursor-pointer group shrink-0"
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#52b788] to-[#74c69d] flex items-center justify-center text-[#1b4332] font-black text-xl shadow-inner group-hover:scale-105 transition-transform">
-              360
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#52b788] to-[#74c69d] flex items-center justify-center text-[#1b4332] shadow-inner group-hover:scale-105 transition-transform">
+              <CattleLogo className="w-6 h-6" />
             </div>
             <div>
               <span className="font-extrabold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-[#d4a373] to-[#52b788]">
                 {t.appName}
-              </span>
-              <span className="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-[#2d6a4f] text-[#74c69d] border border-[#40916c]/40">
-                SIH 2026
               </span>
             </div>
           </div>

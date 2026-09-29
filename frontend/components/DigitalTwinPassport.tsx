@@ -15,6 +15,7 @@ import {
   LifecycleEvent 
 } from "../lib/api";
 import { Language } from "../lib/dictionary";
+import { CattleLogo } from "./Navbar";
 
 interface Props { 
   lang: Language; 
@@ -485,12 +486,12 @@ export const DigitalTwinPassport: React.FC<Props> = ({ data }) => {
         {/* Certificate Header with Emblem styling */}
         <div className="border-b-2 border-[#1b4332] pb-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-[#1b4332] flex items-center justify-center text-white font-black text-2xl shadow-md border-2 border-[#74c69d]">
-              360
+            <div className="w-16 h-16 rounded-2xl bg-[#1b4332] flex items-center justify-center text-[#74c69d] shadow-md border-2 border-[#74c69d]">
+              <CattleLogo className="w-10 h-10 text-[#74c69d]" />
             </div>
             <div>
               <div className="text-[11px] font-bold uppercase tracking-widest text-[#2d6a4f]">
-                Smart India Hackathon 2026 · PS 26111
+                FeedSure 360 · Dairy Quality Assurance
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-[#1b4332] tracking-tight">
                 FEED QUALITY PASSPORT &amp; PROVENANCE CERTIFICATE
